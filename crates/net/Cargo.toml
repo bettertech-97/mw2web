@@ -1,0 +1,53 @@
+[package]
+name = "net"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Our wire: frames, deltas, prediction, interpolation. Not retail's netcode."
+
+[dependencies]
+web_threads.workspace = true
+vfs.workspace = true
+web-time.workspace = true
+updater = { path = "../updater" }
+structured_data_iw4.workspace = true
+ring = "0.17.14"
+diag.workspace = true
+math_iw4.workspace = true
+frame.workspace = true
+playerstate_iw4.workspace = true
+entity_iw4.workspace = true
+anim_iw4.workspace = true
+xmodel_runtime.workspace = true
+movement_iw4.workspace = true
+input_iw4.workspace = true
+weapon_iw4.workspace = true
+gamemode_iw4.workspace = true
+killcam_iw4.workspace = true
+sim.workspace = true
+hud_iw4.workspace = true
+perf.workspace = true
+bevy.workspace = true
+master_protocol.workspace = true
+tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
+zstd = { version = "0.13", default-features = false }
+
+# Online play (QUIC to the master relay) is desktop-only. The browser build keeps
+# tokio's sync/time types so the bridge state compiles, but has no sockets.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+quinn = { version = "0.11.11", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
+rustls = { version = "0.23.31", default-features = false, features = ["ring", "std"] }
+tokio = { version = "1.47", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { version = "1.47", features = ["macros", "rt", "sync", "time"] }
+# ring's entropy source in the browser is the Web Crypto API.
+ring = { version = "0.17.14", features = ["wasm32_unknown_unknown_js"] }
+# Online play in the browser: a WebSocket to the LAN server's relay bridge.
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["WebSocket", "BinaryType", "MessageEvent", "CloseEvent"] }
+
+[lints]
+workspace = true

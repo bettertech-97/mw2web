@@ -1,0 +1,2255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0a0c0f">
+<title>MW2WEB</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Michroma&display=swap">
+<style>
+  @font-face {
+    font-family: "Gothic";
+    src: url("assets/fonts/League Gothic/league-gothic-400-normal.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Mono";
+    src: url("assets/fonts/Chivo Mono/chivo-mono-400-normal.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Mono";
+    src: url("assets/fonts/Chivo Mono/chivo-mono-700-normal.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+  }
+  /* The game's own multiplayer menu: map art dimmed behind the lobby, parchment
+     text, the yellow of a selected row, the red of the "2". */
+  :root {
+    --bg: #0a0c0f;
+    --steel: #121519;
+    --panel: rgb(8 10 13 / 0.78);
+    --line: rgb(236 230 210 / 0.12);
+    --text: #ece6d2;
+    --dim: #9a9686;
+    --accent: #f0c84a;
+    --accent-hi: #ffd969;
+    --red: #c8102e;
+    --ok: #9ccf6a;
+    --bad: #ef6a45;
+    --art: none;
+    color-scheme: dark;
+    accent-color: var(--accent);
+  }
+  * { box-sizing: border-box; }
+  ::selection { background: var(--accent); color: var(--bg); }
+  .wide { font-family: "Michroma", "Bank Gothic", "Eurostile", sans-serif; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  /* Bevy writes a fixed size into the canvas style; the page owns layout and
+     the engine follows the resize observer. */
+  #iw4l-canvas {
+    display: block;
+    width: 100vw !important;
+    height: 100vh !important;
+    outline: none;
+  }
+
+  /* The lobby: dark steel under smoked-glass panels, the way the game's own
+     pre-match screens sit over their backdrop. */
+  .steel {
+    background:
+      linear-gradient(rgb(6 7 9 / 0.86), rgb(6 7 9 / 0.94)),
+      url("assets/textures/str_metalgen5.png") center / 256px repeat var(--bg);
+  }
+  /* The selected map's loadscreen, blurred and sunk behind everything, the
+     way the game's lobby sits over its map art; film grain on top. */
+  #start::before {
+    content: "";
+    position: fixed;
+    inset: -40px;
+    z-index: -2;
+    background: var(--art) center / cover no-repeat var(--bg);
+    filter: blur(14px) saturate(0.55) brightness(0.42);
+    transition: background-image 300ms ease;
+  }
+  #start::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.16;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+  #start {
+    position: fixed;
+    inset: 0;
+    overflow: auto;
+    background: linear-gradient(180deg, rgb(6 7 9 / 0.35), rgb(6 7 9 / 0.75) 60%, rgb(6 7 9 / 0.9));
+    color: var(--text);
+    font: 13px/1.55 "Mono", ui-monospace, monospace;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.75fr);
+    grid-template-rows: auto 1fr auto;
+    align-content: start;
+    gap: 22px clamp(20px, 3vw, 40px);
+    padding: clamp(18px, 4vh, 40px) clamp(18px, 5vw, 72px);
+  }
+  #start[hidden] { display: none; }
+
+  .top { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; gap: 8px 32px; align-items: end; }
+  .wordmark {
+    grid-row: 1 / span 2;
+    font: 400 clamp(34px, 4.6vw, 62px)/1 "Michroma", "Bank Gothic", sans-serif;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--text);
+    text-shadow: 0 2px 0 rgb(0 0 0 / 0.6), 0 0 28px rgb(240 200 74 / 0.12);
+  }
+  .wordmark .two { color: var(--red); }
+  .wordmark span:not(.two) { color: var(--dim); }
+  .wordmark small {
+    display: block;
+    margin-top: 10px;
+    font: 400 11px/1 "Michroma", sans-serif;
+    letter-spacing: 0.32em;
+    color: var(--accent);
+  }
+  /* The site's other pages, top right: the docs and the X account. */
+  .sitenav { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; display: flex; flex-wrap: wrap; gap: 8px; }
+  .sitenav a {
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    background: rgb(255 255 255 / 0.03);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .sitenav a:hover { border-color: var(--accent); color: var(--accent-hi); }
+  .sitenav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .lead { margin: 0; max-width: 56ch; color: var(--dim); }
+  .lead strong { color: var(--text); font-weight: 400; }
+  #log { grid-column: 2; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; align-self: start; }
+  #log li {
+    display: inline-flex;
+    gap: 8px;
+    padding: 3px 9px;
+    border: 1px solid var(--line);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--dim);
+    animation: print 200ms steps(3) both;
+  }
+  #log li span:last-child { color: var(--text); }
+  #log .ok { color: var(--ok) !important; }
+  #log .bad { color: var(--bad) !important; }
+  #log .wait { color: var(--dim) !important; }
+  @keyframes print { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+
+  .matches, .hostpanel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-top: 2px solid var(--accent);
+    backdrop-filter: blur(10px);
+    padding: 18px 20px 20px;
+    box-shadow: 0 24px 50px rgb(0 0 0 / 0.55);
+    min-width: 0;
+  }
+  .matches { grid-column: 1; grid-row: 2; align-self: start; }
+  .hostpanel { grid-column: 2; grid-row: 2; align-self: start; }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .panel-head h2 {
+    margin: 0;
+    font: 400 15px/1 "Michroma", "Bank Gothic", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--text);
+  }
+  .panel-head span { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+  .fine { margin: 14px 0 0; color: var(--dim); font-size: 12px; max-width: 60ch; }
+  .fine code { color: var(--text); overflow-wrap: anywhere; }
+
+  /* One row per running match, like the game's own join list. */
+  #rooms { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  #rooms .none { color: var(--dim); border: 1px dashed var(--line); padding: 18px; }
+  /* A match row like the game's server list: map art, name, who is in. */
+  .card {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr) auto;
+    gap: 3px 16px;
+    align-items: start;
+    padding: 10px 14px 12px 10px;
+    background: rgb(255 255 255 / 0.03);
+    border: 1px solid var(--line);
+    border-left: 3px solid rgb(236 230 210 / 0.18);
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .card:hover { background: rgb(240 200 74 / 0.07); border-left-color: var(--accent); }
+  .card:has(.live) { border-left-color: var(--accent); }
+  .card .art {
+    grid-row: 1 / span 3;
+    width: 148px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+    background: var(--steel);
+    border: 1px solid rgb(0 0 0 / 0.6);
+    filter: saturate(0.85);
+  }
+  .card .map {
+    margin: 0;
+    font: 400 17px/1.15 "Michroma", "Bank Gothic", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .card .state { font-size: 12px; color: var(--dim); }
+  .card .state b { color: var(--text); font-weight: 400; }
+  .card .state .live { color: var(--accent); font-weight: 700; }
+  .card .state .live::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin: 0 6px 1px 0;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  .roster { display: flex; flex-wrap: wrap; gap: 5px 6px; margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; }
+  .roster li { padding: 2px 9px; border: 1px solid rgb(236 230 210 / 0.2); white-space: nowrap; }
+  .roster li.host { border-color: var(--accent); color: var(--accent); }
+  .card .join, #host, #pick {
+    font: 400 13px/1 "Michroma", "Bank Gothic", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #14110a;
+    background: var(--accent);
+    border: 0;
+    padding: 14px 22px 13px;
+    cursor: pointer;
+    transition: background 120ms ease, transform 120ms ease;
+  }
+  .card .join { grid-column: 3; grid-row: 1 / span 3; align-self: center; }
+  .card .join:hover, #host:hover, #pick:hover { background: var(--accent-hi); }
+  .card .join:active, #host:active, #pick:active { transform: translateY(1px); }
+  .card .join:focus-visible, #host:focus-visible, #pick:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+  .card .join:disabled, #host:disabled, #pick:disabled { background: #3a3c38; color: var(--dim); cursor: not-allowed; }
+
+  /* Host panel: the match's settings, then the one button that starts it. */
+  .row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .row label, .row .k { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .hostpanel select, .hostpanel input[type="text"] {
+    font: 700 13px "Mono", monospace;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    padding: 2px 0;
+    text-align: right;
+    cursor: pointer;
+  }
+  .hostpanel input[type="text"] { width: 14ch; cursor: text; }
+  .hostpanel input[type="text"]::placeholder { color: var(--dim); }
+  .hostpanel select:focus-visible, .hostpanel input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .hostpanel option { background: var(--steel); color: var(--text); }
+  .hostpanel input[type="checkbox"] { width: 15px; height: 15px; margin: 0; cursor: pointer; }
+  #host, #pick { display: block; width: 100%; margin-top: 16px; font-size: 15px; padding: 16px 16px 15px; }
+  /* The class editor, before any match: second to Host, so outlined. */
+  #cac {
+    width: 100%;
+    margin-top: 10px;
+    font: 400 12px/1 "Michroma", "Bank Gothic", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid var(--accent);
+    padding: 13px 16px 12px;
+    cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  #cac:hover { background: var(--accent); color: #14110a; }
+  #cac:active { transform: translateY(1px); }
+  #cac:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+  #cac:disabled { border-color: #3a3c38; color: var(--dim); background: transparent; cursor: not-allowed; }
+  #pick[hidden] { display: none; }
+  /* The chosen map, as the game shows it in the lobby. */
+  .preview {
+    position: relative;
+    margin: 0 0 6px;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border: 1px solid rgb(0 0 0 / 0.6);
+    background: var(--steel);
+  }
+  .preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .preview figcaption {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 28px 12px 10px;
+    font: 400 16px/1.1 "Michroma", "Bank Gothic", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    background: linear-gradient(transparent, rgb(6 7 9 / 0.9));
+    text-shadow: 0 1px 2px #000;
+  }
+
+  /* LAN lobby: only when the page is served by `iw4l-master lan`. */
+  .lan-only { display: none; }
+  body.lan .lan-only { display: block; }
+  body.lan .row.lan-only { display: flex; }
+  body.lan .solo-only { display: none; }
+
+  /* Secondary action under the main button (a remembered folder). */
+  .link {
+    display: block;
+    margin: 10px 0 0;
+    padding: 0;
+    font: 12px "Mono", monospace;
+    color: var(--dim);
+    background: none;
+    border: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .link:hover { color: var(--text); }
+  .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .link[hidden] { display: none; }
+
+  /* Controls, as a footer strip. */
+  .manual { grid-column: 1 / -1; grid-row: 3; }
+  .controls {
+    display: grid;
+    grid-template-columns: max-content 1fr max-content 1fr;
+    gap: 6px 18px;
+    margin: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .controls dt { color: var(--text); }
+  .controls dd { margin: 0; }
+  kbd {
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 0 4px;
+    font: 700 11px/1.6 "Mono", monospace;
+    text-align: center;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+  }
+
+  /* Shown over the game when a LAN session ends. */
+  #ended {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background: rgb(0 0 0 / 0.6);
+    z-index: 10;
+    font: 13px/1.55 "Mono", ui-monospace, monospace;
+    color: var(--text);
+  }
+  #ended[hidden] { display: none; }
+  #ended .panel { width: min(100%, 420px); background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(6px); padding: 18px 20px 20px; }
+  #ended h2 { margin: 0; font: 400 30px/1 "Gothic", Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.04em; }
+  #ended .rule { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+  #ended-reason { margin: 10px 0 16px; overflow-wrap: anywhere; color: var(--dim); }
+  #ended .actions { display: flex; gap: 10px; justify-content: flex-end; }
+  #ended button {
+    font: 700 12px "Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  #ended button.go { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  #ended button:hover { border-color: var(--text); }
+  #ended button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Over the game until the mouse is first captured. */
+  #aim-hint {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    z-index: 5;
+    padding: 8px 14px;
+    font: 700 12px "Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    pointer-events: none;
+  }
+  #aim-hint[hidden] { display: none; }
+
+  /* LAN news between matches, over the game's menu. */
+  #lan-status {
+    position: fixed;
+    left: 50%;
+    top: 24px;
+    transform: translateX(-50%);
+    z-index: 5;
+    max-width: calc(100vw - 32px);
+    padding: 8px 14px;
+    font: 700 13px "Mono", monospace;
+    color: var(--bg);
+    background: var(--accent);
+    pointer-events: none;
+  }
+  #lan-status[hidden] { display: none; }
+
+  /* Over the game: who is in this room, and the link that brings more.
+     Shown only while the mouse is free (Esc), since the game owns it. */
+  #roster {
+    position: fixed;
+    left: 16px;
+    bottom: 88px;
+    z-index: 6;
+    width: min(340px, calc(100vw - 32px));
+    padding: 12px 14px 14px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(6px);
+    color: var(--text);
+    font: 12px/1.5 "Mono", ui-monospace, monospace;
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.5);
+  }
+  #roster[hidden] { display: none; }
+  #roster h2 { margin: 0 24px 0 0; font: 400 26px/1 "Gothic", Impact, sans-serif; text-transform: uppercase; letter-spacing: 0.03em; }
+  #roster .meta { color: var(--dim); font-size: 11px; }
+  #roster .roster { margin-top: 8px; }
+  #roster .share { display: flex; gap: 6px; align-items: baseline; margin-top: 10px; }
+  #roster .bg { color: var(--dim); font-size: 11px; margin-top: 8px; }
+  #roster .bg[hidden] { display: none; }
+  #roster .share span { color: var(--dim); font-size: 11px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.06em; }
+  #roster input {
+    flex: 1;
+    min-width: 0;
+    font: 11px "Mono", monospace;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 2px 0;
+  }
+  #roster button {
+    font: 700 11px "Mono", monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--bg);
+    background: var(--accent);
+    border: 0;
+    padding: 4px 9px;
+    cursor: pointer;
+  }
+  #roster button:hover { background: var(--accent-hi); }
+  #roster button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  #roster .close { position: absolute; right: 6px; top: 6px; background: none; color: var(--dim); font-size: 14px; line-height: 1; }
+  #roster .close:hover { background: none; color: var(--text); }
+
+  /* Over the black canvas while the engine fetches, compiles and streams:
+     the engine's own loading screen only appears once the map's data is in. */
+  /* The game's own loading screen: the map's art full-bleed, its name low
+     on the left, a thin progress line. */
+  #loading {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    display: grid;
+    align-content: end;
+    justify-items: start;
+    padding: clamp(24px, 6vw, 90px);
+    color: var(--text);
+    font: 14px/1.55 "Mono", ui-monospace, monospace;
+    background:
+      linear-gradient(180deg, rgb(6 7 9 / 0.15), rgb(6 7 9 / 0.55) 55%, rgb(6 7 9 / 0.92)),
+      var(--art) center / cover no-repeat var(--bg);
+  }
+  #loading[hidden] { display: none; }
+  #loading .map {
+    font: 400 clamp(26px, 4.4vw, 56px)/1.05 "Michroma", "Bank Gothic", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text);
+    margin: 0 0 14px;
+    text-shadow: 0 2px 6px #000;
+  }
+  #loading .map::before {
+    content: "Loading";
+    display: block;
+    margin-bottom: 10px;
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    color: var(--accent);
+  }
+  #loading .stage { font-size: 15px; }
+  #loading .note { color: var(--dim); margin-top: 6px; min-height: 1.5em; }
+  #loading .bar { width: min(560px, 100%); height: 10px; margin-top: 18px; background: rgb(236 230 210 / 0.18); border: 1px solid rgb(236 230 210 / 0.35); overflow: hidden; }
+  #loading .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 300ms linear; }
+  #loading .bar.busy i { width: 30%; animation: busy 1.1s linear infinite; }
+  @keyframes busy { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+  #loading .error { color: var(--bad); margin-top: 14px; max-width: 60ch; }
+
+  @media (max-width: 900px) {
+    #start { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto; }
+    .top { grid-template-columns: 1fr; }
+    .wordmark { grid-row: auto; }
+    .sitenav { grid-column: 1; grid-row: auto; justify-self: start; }
+    #log { grid-column: 1; }
+    .matches { grid-column: 1; grid-row: 2; }
+    .hostpanel { grid-column: 1; grid-row: 3; }
+    .manual { grid-row: 4; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #log li, .card .state .live::before { animation: none; }
+    .card, .card .join, #host, #pick, #cac { transition: none; }
+    #loading .bar.busy i { animation: none; width: 100%; opacity: 0.4; }
+  }
+</style>
+</head>
+<body>
+<canvas id="iw4l-canvas" tabindex="0"></canvas>
+
+<main id="start" class="steel">
+  <header class="top">
+    <h1 class="wordmark" id="title">MW<span class="two">2</span><span>WEB</span><small>Multiplayer · in the browser</small></h1>
+    <nav class="sitenav" aria-label="Site">
+      <a href="/docs/">Docs</a>
+      <a href="https://x.com/mw2web_" target="_blank" rel="noopener">@mw2web_ on X</a>
+    </nav>
+    <p class="lead solo-only">Runs the open-source IW4L engine in this tab. <strong>Nothing to install:</strong> the game files stream in and stay on this PC after the first time.</p>
+    <p class="lead lan-only">Game files stream from <strong id="lan-host">the server</strong> and stay on this PC after the first time. Pick a match, or host one.</p>
+    <ul id="log" aria-live="polite"></ul>
+  </header>
+
+  <section class="matches lan-only" aria-labelledby="matches-title">
+    <div class="panel-head"><h2 id="matches-title">Matches</h2><span id="board-count">LOOKING…</span></div>
+    <ul id="rooms"></ul>
+    <p class="fine">Joining a running match works: the map downloads first, then you are in.</p>
+  </section>
+
+  <aside class="hostpanel" aria-label="Host a match">
+    <div class="panel-head"><h2>Host a match</h2><span id="stamp"></span></div>
+    <figure class="preview"><img id="host-art" alt="" decoding="async"><figcaption id="host-art-name"></figcaption></figure>
+    <div class="row"><label for="map">Map</label>
+      <select id="map">
+        <option value="mp_afghan">Afghan</option>
+        <option value="mp_boneyard" selected>Boneyard</option>
+        <option value="mp_derail">Derail</option>
+        <option value="mp_estate">Estate</option>
+        <option value="mp_favela">Favela</option>
+        <option value="mp_highrise">Highrise</option>
+        <option value="mp_inferno">Inferno (CS:GO)</option>
+        <option value="mp_invasion">Invasion</option>
+        <option value="mp_cs_italy">Italy (CS:GO)</option>
+        <option value="mp_mirage">Mirage (CS:GO)</option>
+        <option value="mp_checkpoint">Karachi</option>
+        <option value="mp_nuke">Nuke (CS:GO)</option>
+        <option value="mp_office">Office (CS:GO)</option>
+        <option value="mp_overpass">Overpass (CS:GO)</option>
+        <option value="mp_quarry">Quarry</option>
+        <option value="mp_rundown">Rundown</option>
+        <option value="mp_rust">Rust</option>
+        <option value="mp_nightshift">Skidrow</option>
+        <option value="mp_subbase">Sub Base</option>
+        <option value="mp_terminal">Terminal</option>
+        <option value="mp_train">Train (CS:GO)</option>
+        <option value="mp_underpass">Underpass</option>
+        <option value="mp_brecourt">Wasteland</option>
+      </select>
+    </div>
+    <div class="row"><label for="bots">Bots</label>
+      <select id="bots">
+        <option>0</option><option>1</option><option>2</option><option selected>3</option>
+        <option>5</option><option>7</option>
+      </select>
+    </div>
+    <div class="row"><label for="textures">Textures</label>
+      <select id="textures">
+        <option value="16">Ultra potato</option><option value="32">Toaster</option>
+        <option value="64">Potato</option><option value="128" selected>Low</option>
+        <option value="256">Medium</option><option value="512">High</option>
+      </select>
+    </div>
+    <div class="row"><label for="render-scale">Resolution</label>
+      <select id="render-scale">
+        <option value="auto" selected>Auto</option><option value="1">Full</option><option value="0.75">75%</option><option value="0.5">50%</option>
+      </select>
+    </div>
+    <div class="row"><label for="mode">Mode</label>
+      <select id="mode">
+        <option value="dm" selected>Free-for-all</option>
+        <option value="war">Team deathmatch</option>
+        <option value="sd">Search and destroy</option>
+      </select>
+    </div>
+    <div class="row"><label for="fullscreen">Fullscreen</label><input id="fullscreen" type="checkbox"></div>
+    <div class="row lan-only"><label for="time">Time limit</label>
+      <select id="time">
+        <option value="5">5 min</option><option value="10" selected>10 min</option>
+        <option value="20">20 min</option><option value="30">30 min</option>
+      </select>
+    </div>
+    <div class="row lan-only"><label for="after">After a match</label>
+      <select id="after">
+        <option value="same" selected>Same map again</option>
+        <option value="rotate">Next map</option>
+        <option value="stop">Stop</option>
+      </select>
+    </div>
+    <div class="row lan-only"><label for="room-password">Password</label><input id="room-password" type="text" maxlength="32" autocomplete="off" spellcheck="false" placeholder="none"></div>
+    <div class="row lan-only"><label for="name">Name</label><input id="name" type="text" maxlength="16" autocomplete="nickname" spellcheck="false"></div>
+    <button id="host" class="lan-only" type="button">Host</button>
+    <button id="cac" class="lan-only" type="button">Create a Class</button>
+    <button id="pick" type="button">Choose your Modern Warfare 2 folder</button>
+    <button id="repick" type="button" class="link solo-only" hidden>Choose a different folder</button>
+    <input id="pick-input" type="file" webkitdirectory hidden>
+    <p class="fine solo-only">Pick the folder with <code>zone</code> and <code>main</code> inside, usually <code>Steam\steamapps\common\Call of Duty Modern Warfare 2</code>. Your browser asks whether this page may view it, and remembers your answer. Matches run against bots, with sound off for now.</p>
+  </aside>
+
+  <section class="manual" aria-label="Controls">
+    <dl class="controls">
+      <dt><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>Move</dd>
+      <dt>Mouse</dt><dd>Aim, once you click the game</dd>
+      <dt>Left / right click</dt><dd>Fire / aim down sights</dd>
+      <dt><kbd>Shift</kbd></dt><dd>Sprint, or hold a scope steady</dd>
+      <dt><kbd>Space</kbd> <kbd>C</kbd> <kbd>Ctrl</kbd></dt><dd>Jump, crouch, go prone</dd>
+      <dt><kbd>R</kbd> <kbd>V</kbd> <kbd>E</kbd></dt><dd>Reload, knife, use</dd>
+      <dt><kbd>F</kbd> <kbd>G</kbd></dt><dd>Grenade, special grenade</dd>
+      <dt><kbd>Tab</kbd> <kbd>Esc</kbd></dt><dd>Scores, menu</dd>
+    </dl>
+  </section>
+</main>
+
+<div id="ended" hidden role="alertdialog" aria-labelledby="ended-title" aria-describedby="ended-reason">
+  <div class="panel">
+    <h2 id="ended-title">DISCONNECTED</h2>
+    <hr class="rule">
+    <p id="ended-reason"></p>
+    <div class="actions">
+      <button type="button" id="ended-lobby">Back to lobby</button>
+      <button type="button" id="ended-rejoin" class="go" hidden>Rejoin</button>
+    </div>
+  </div>
+</div>
+
+<div id="aim-hint" hidden>Click the game to aim with the mouse</div>
+<div id="lan-status" hidden role="status"></div>
+<aside id="roster" hidden aria-label="This match">
+  <button type="button" class="close" aria-label="Hide">×</button>
+  <h2 id="roster-title"></h2>
+  <div class="meta" id="roster-meta"></div>
+  <ul class="roster" id="roster-names"></ul>
+  <div class="share"><span>Join link</span><input id="roster-link" readonly><button type="button" id="roster-copy">Copy</button></div>
+  <div class="bg" id="roster-bg" hidden></div>
+</aside>
+
+<div id="loading" class="steel" hidden role="status" aria-live="polite">
+  <h2 class="map" id="loading-map">LOADING</h2>
+  <div class="stage" id="loading-stage"></div>
+  <div class="note" id="loading-note"></div>
+  <div class="bar busy" id="loading-bar"><i></i></div>
+  <div class="error" id="loading-error"></div>
+</div>
+
+<script type="module">
+  // The engine opens its Web Audio output before any click, so the browser
+  // creates it suspended; the first real input resumes every context made.
+  {
+    const made = [];
+    globalThis.__iw4lAudioContexts = made;
+    // Streamed clips (MP3) decoded by the browser's own decoder thread for
+    // the engine (crates/audio/src/web_decode.rs): submit bytes, poll, take.
+    {
+      const jobs = new Map();
+      let next = 0;
+      let decoder = null;
+      const context = () => (decoder ??= new OfflineAudioContext(2, 1, 48000));
+      globalThis.iw4lDecode = {
+        submit(bytes) {
+          const id = ++next;
+          const job = { state: 0, buffer: null, error: "" };
+          jobs.set(id, job);
+          // decodeAudioData detaches the buffer it is given: hand it a copy.
+          context().decodeAudioData(bytes.slice().buffer)
+            .then((buffer) => { job.buffer = buffer; job.state = 1; })
+            .catch((error) => { job.error = String(error); job.state = -1; });
+          return id;
+        },
+        state: (id) => jobs.get(id)?.state ?? -1,
+        channels: (id) => jobs.get(id)?.buffer?.numberOfChannels ?? 0,
+        rate: (id) => jobs.get(id)?.buffer?.sampleRate ?? 0,
+        take(id) {
+          const job = jobs.get(id);
+          jobs.delete(id);
+          const buffer = job?.buffer;
+          if (!buffer) return new Float32Array(0);
+          const channels = buffer.numberOfChannels;
+          const frames = buffer.length;
+          const out = new Float32Array(frames * channels);
+          for (let c = 0; c < channels; c++) {
+            const data = buffer.getChannelData(c);
+            for (let i = 0; i < frames; i++) out[i * channels + c] = data[i];
+          }
+          return out;
+        },
+        error(id) {
+          const job = jobs.get(id);
+          jobs.delete(id);
+          return job?.error ?? "unknown decode job";
+        },
+      };
+    }
+    const Native = globalThis.AudioContext;
+    globalThis.AudioContext = class extends Native {
+      constructor(...args) { super(...args); made.push(this); }
+    };
+    const kick = () => { for (const ctx of made) if (ctx.state === "suspended") ctx.resume().catch(() => {}); };
+    for (const type of ["pointerdown", "keydown", "click"]) addEventListener(type, kick, { capture: true });
+  }
+  // `?engine=exp` loads an experimental bundle from pkg-exp/ (a threaded
+  // build under test, say) while everyone else keeps pkg/.
+  // Two engine bundles: pkg-exp runs in a worker with real threads (shared
+  // memory, nightly build) and is the default in Chromium browsers; pkg is
+  // the stable single-threaded build, the default elsewhere. Firefox stays
+  // on pkg: its nested workers never answer the threaded build's probe, and
+  // that build's thread-less path stalls there. `?engine=stable` forces pkg,
+  // `?engine=<name>` another bundle; a failed start falls back to pkg.
+  const engineParam = new URLSearchParams(location.search).get("engine") || "";
+  const chromium = /Chrome\//.test(navigator.userAgent) && !/Firefox\//.test(navigator.userAgent);
+  const canThread = chromium && typeof SharedArrayBuffer === "function" && !!globalThis.crossOriginIsolated;
+  const enginePkg =
+    engineParam === "stable" || /Firefox\//.test(navigator.userAgent) ? "pkg"
+    : /^[a-z0-9-]{1,16}$/.test(engineParam) ? `pkg-${engineParam}`
+    : canThread ? "pkg-exp"
+    : "pkg";
+  const glue = await import(`./${enginePkg}/iw4l.js`);
+  const init = glue.default;
+  // Download and compile the engine while the page checks the browser and
+  // mounts the game folder; `run` hands the finished module to `init`.
+  // The engine is ~120 MB, more than the HTTP cache will keep, so a copy
+  // lives in Cache Storage and is reused while the server's Last-Modified
+  // and Content-Length still match (one HEAD request decides).
+  async function engineResponse() {
+    const url = new URL(`./${enginePkg}/iw4l_bg.wasm`, import.meta.url);
+    let cache = null;
+    try { cache = await caches.open("iw4l-engine"); } catch {}
+    if (!cache) return fetch(url);
+    const version = (response) =>
+      `${response.headers.get("last-modified")}|${response.headers.get("content-length")}`;
+    let head = null;
+    try { head = await fetch(url, { method: "HEAD", cache: "no-store" }); } catch {}
+    const kept = await cache.match(url);
+    if (kept && (!head?.ok || version(kept) === version(head))) return kept;
+    const fresh = await fetchEngine(url);
+    // Keep a copy for the next load; a failed put only loses the cache.
+    if (fresh.ok) cache.put(url, fresh.clone()).catch(() => {});
+    return fresh;
+  }
+
+  /** One streaming fetch: nginx serves the engine precompressed (16 MB over
+   * the wire for a 65 MB module) and the browser compiles it as it arrives.
+   * Ranged chunks would defeat the compression. */
+  function fetchEngine(url) {
+    return fetch(url, { cache: "no-store" });
+  }
+  const engineModule = engineResponse()
+    .then((response) => WebAssembly.compileStreaming(response))
+    .catch(() => null);
+  import {
+    hostedManifest, listPicked, missingGameFiles, mountDevServer, mountPicked, prefetchHosted, setEngineInWorker, mountedChannel, cacheSeed } from "./vfs.js";
+
+  const params = new URLSearchParams(location.search);
+  const dev = params.has("dev");
+  // The engine runs in its own Web Worker (web/engine-worker.js) when the
+  // bundle exports the worker entry: the page thread stays free, so loads
+  // never freeze the tab. `?worker=0` keeps it on the page for comparison;
+  // `?worker=1` asks for it on the default bundle.
+  const workerMode =
+    typeof glue.iw4l_worker_main === "function" &&
+    params.get("worker") !== "0" &&
+    typeof HTMLCanvasElement.prototype.transferControlToOffscreen === "function";
+  setEngineInWorker(workerMode);
+  // Served by `iw4l-master lan`: play goes through its relay. On the host's
+  // network the games come from the host PC (`files`); through its internet
+  // tunnel each player reads their own MW2 folder.
+  const info = await fetch("/lan/info", { cache: "no-store" })
+    .then((response) => (response.ok ? response.json() : null))
+    .catch(() => null);
+  const lan = !!info;
+  const ownFiles = lan && !info.files;
+  // Player accounts (name, profile with XP and classes), one per address,
+  // when the server keeps them (`iw4l-master lan --accounts`).
+  const accounts = lan && !!info.accounts;
+  let account = accounts
+    ? await fetch("/lan/account", { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .catch(() => null)
+    : null;
+  if (lan) document.body.classList.add("lan");
+  const start = document.getElementById("start");
+  const log = document.getElementById("log");
+  const pick = document.getElementById("pick");
+
+  // Dev only: mirror the console to the dev server's web/dev.log; the
+  // browser keeps only the newest few hundred lines.
+  if (dev || (lan && info.log)) {
+    for (const level of ["log", "warn", "error"]) {
+      const original = console[level].bind(console);
+      console[level] = (...args) => {
+        original(...args);
+        navigator.sendBeacon(
+          "/log",
+          `${level} t=${(performance.now() / 1000).toFixed(1)} ${args.map(String).join(" ")}`,
+        );
+      };
+    }
+    addEventListener("error", (event) =>
+      navigator.sendBeacon("/log", `uncaught ${event.message} ${event.error?.stack ?? ""}`),
+    );
+    navigator.sendBeacon("/log", `---- page load ${new Date().toISOString()} ${location.search}`);
+  }
+
+  // Dev only: a hidden tab gets no animation frames, which stalls the engine
+  // while an automated test drives it from a background pane. Message-channel
+  // callbacks are not throttled; stand them in for frames while hidden.
+  if (dev) {
+    const nativeFrame = window.requestAnimationFrame.bind(window);
+    const channel = new MessageChannel();
+    const queued = [];
+    channel.port1.onmessage = () => {
+      const now = performance.now();
+      for (const callback of queued.splice(0)) callback(now);
+    };
+    globalThis.iw4lFrames = 0;
+    window.requestAnimationFrame = (callback) => {
+      globalThis.iw4lFrames += 1;
+      if (document.visibilityState === "visible") return nativeFrame(callback);
+      queued.push(callback);
+      if (queued.length === 1) channel.port2.postMessage(0);
+      return 0;
+    };
+  }
+
+  /** Prints one line on the slip; returns a setter for its result column. */
+  function line(text, state = "wait", result = "…") {
+    const li = document.createElement("li");
+    const label = document.createElement("span");
+    const value = document.createElement("span");
+    label.textContent = text;
+    li.append(label, value);
+    log.append(li);
+    const set = (next, cls) => {
+      value.textContent = next;
+      value.className = cls;
+    };
+    set(result, state);
+    return set;
+  }
+
+  // Remembered choices; every access tolerates blocked storage.
+  const saved = {
+    get(key) {
+      try { return localStorage.getItem(`iw4l-${key}`); } catch { return null; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(`iw4l-${key}`, value); } catch {}
+    },
+  };
+
+  /** The picked folder's handle lives in IndexedDB (localStorage cannot hold
+   * it), so a later visit is one click. Resolves null where unavailable. */
+  function folderStore(write) {
+    return new Promise((resolve) => {
+      try {
+        const open = indexedDB.open("iw4l", 1);
+        open.onupgradeneeded = () => open.result.createObjectStore("handles");
+        open.onerror = () => resolve(null);
+        open.onsuccess = () => {
+          const store = open.result
+            .transaction("handles", write ? "readwrite" : "readonly")
+            .objectStore("handles");
+          const request = write ? store.put(write, "mw2") : store.get("mw2");
+          request.onsuccess = () => resolve(write ?? request.result ?? null);
+          request.onerror = () => resolve(null);
+        };
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  const mapSelect = document.getElementById("map");
+  const botsSelect = document.getElementById("bots");
+  const fullscreenBox = document.getElementById("fullscreen");
+  // Texture detail: every step up costs four times the bytes to stream from
+  // the host and to hold in memory; the engine reads it as IW4L_MAX_TEXTURE.
+  const texturesSelect = document.getElementById("textures");
+  // The game draws this share of the window's pixels and the browser
+  // stretches the picture: the lever for graphics cards that cannot fill a
+  // big screen. The HUD keeps its layout (the engine's scale factor follows).
+  const renderScaleSelect = document.getElementById("render-scale");
+  // "Auto" moves through these as the frames keep up (autoResolution).
+  const AUTO_SCALES = [1, 0.85, 0.7, 0.6, 0.5];
+  const autoRes = { step: 0, slow: 0, fast: 0, upWait: 8, probation: 0, settle: 0 };
+  const renderScale = () => renderScaleSelect.value === "auto"
+    ? AUTO_SCALES[autoRes.step]
+    : Math.min(1, Math.max(0.25, Number(renderScaleSelect.value) || 1));
+  // The display's refresh rate, from the page's own animation frames (this
+  // thread stays light while the engine runs in its worker): the most seen
+  // over the last ten seconds, so one busy second does not lower it.
+  const refreshRates = [];
+  const refreshHz = () => Math.max(30, ...refreshRates);
+  {
+    let frames = 0, since = 0;
+    const tick = (now) => {
+      if (!since) since = now;
+      frames++;
+      if (now - since >= 1000) {
+        refreshRates.push(frames * 1000 / (now - since));
+        if (refreshRates.length > 10) refreshRates.shift();
+        frames = 0; since = now;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+  /** Automatic resolution, once a second from the engine (frame rate, and its
+   * update time: mean and 90th percentile). Frames below the target while
+   * the engine had time to spare wait on the graphics card, and drawing fewer
+   * pixels helps; frames slowed by the engine itself would not, so those
+   * leave the resolution alone. The target is a smooth 60 (or the display's
+   * rate when lower): resolution is not given up to chase a faster display.
+   * A step up is a trial; one that brings the frames back down is undone and
+   * tried again later, waiting twice as long each time. */
+  let resendCanvasSize = () => {};
+  // Inspectable from the console: the controller's state and its last input.
+  globalThis.iw4lAutoResolution = autoRes;
+  function autoResolution(fps, p90) {
+    autoRes.last = { fps, p90, refresh: refreshHz(), mode: renderScaleSelect.value };
+    if (renderScaleSelect.value !== "auto" || !(fps > 0)) return;
+    // In play only: loading and menus have slow frames of their own.
+    if (!globalThis.iw4lEngineWantsLock) { autoRes.slow = 0; autoRes.fast = 0; return; }
+    if (autoRes.settle > 0) { autoRes.settle--; return; }
+    const target = Math.min(refreshHz(), 60);
+    const gpuBound = fps < target * 0.9 && p90 < (1000 / fps) * 0.6;
+    // Holding the target: the engine may be pacing itself to it (even
+    // frame pacing), so more is not to be expected; a step up is a trial.
+    const headroom = fps >= target * 0.97;
+    autoRes.slow = gpuBound ? autoRes.slow + 1 : 0;
+    autoRes.fast = headroom ? autoRes.fast + 1 : 0;
+    let step = autoRes.step;
+    if (autoRes.probation > 0) {
+      autoRes.probation--;
+      if (gpuBound) {
+        step = Math.min(step + 1, AUTO_SCALES.length - 1);
+        autoRes.upWait = Math.min(autoRes.upWait * 2, 120);
+        autoRes.probation = 0;
+      }
+    } else if (autoRes.slow >= 2 && step < AUTO_SCALES.length - 1) {
+      step++;
+    } else if (autoRes.fast >= autoRes.upWait && step > 0) {
+      step--;
+      autoRes.probation = 3;
+    }
+    if (step === autoRes.step) return;
+    const up = step < autoRes.step;
+    autoRes.step = step;
+    autoRes.slow = 0; autoRes.fast = 0; autoRes.settle = 2;
+    if (!up) autoRes.probation = 0;
+    console.log(`resolution: auto ${Math.round(AUTO_SCALES[step] * 100)}% (${fps.toFixed(0)} fps, engine p90 ${p90.toFixed(1)} ms, display ${refreshHz().toFixed(0)} Hz)`);
+    resendCanvasSize();
+  }
+  for (const [field, key] of [
+    [mapSelect, "map"], [botsSelect, "bots"], [fullscreenBox, "fullscreen"], [texturesSelect, "textures"],
+    [renderScaleSelect, "render-scale"],
+  ]) {
+    const value = saved.get(key);
+    if (field.type === "checkbox") {
+      if (value !== null) field.checked = value === "1";
+      field.addEventListener("change", () => saved.set(key, field.checked ? "1" : "0"));
+    } else {
+      if ([...field.options].some((option) => option.value === value)) field.value = value;
+      field.addEventListener("change", () => saved.set(key, field.value));
+    }
+  }
+  setArt(mapSelect.value);
+  // The Counter-Strike bomb maps default to Search and destroy, the MW2
+  // maps to free-for-all; the hostage maps have no bomb sites to play it on.
+  const modeSelect = document.getElementById("mode");
+  const BOMB_MAPS = new Set(["mp_mirage", "mp_nuke", "mp_inferno", "mp_overpass", "mp_train"]);
+  const NO_BOMB_SITES = new Set(["mp_office", "mp_cs_italy"]);
+  const sdOption = modeSelect.querySelector('option[value="sd"]');
+  const defaultMode = () => {
+    sdOption.disabled = NO_BOMB_SITES.has(mapSelect.value);
+    if (BOMB_MAPS.has(mapSelect.value)) modeSelect.value = "sd";
+    else if (modeSelect.value === "sd") modeSelect.value = "dm";
+  };
+  mapSelect.addEventListener("change", () => {
+    setArt(mapSelect.value);
+    defaultMode();
+  });
+  defaultMode();
+
+  const canvas = document.getElementById("iw4l-canvas");
+  const aimHint = document.getElementById("aim-hint");
+  /** Browsers grant fullscreen only to a click, so the first click into the
+   * game (the one that captures the mouse) asks for it. Locking Esc keeps it
+   * for the game's menus; holding Esc still leaves fullscreen. */
+  function enterFullscreen() {
+    if (!fullscreenBox.checked || document.fullscreenElement) return;
+    document.documentElement
+      .requestFullscreen?.({ navigationUI: "hide" })
+      .then(() => navigator.keyboard?.lock?.(["Escape"]))
+      .catch(() => {});
+  }
+  canvas.addEventListener("pointerdown", enterFullscreen);
+  document.addEventListener("pointerlockchange", () => {
+    if (document.pointerLockElement) aimHint.hidden = true;
+  });
+
+  // The engine stopping (a panic, or running out of memory) would otherwise
+  // leave a frozen frame; say so and offer a way back.
+  let engineStarted = false;
+  // The lobby's Create a Class: the engine runs its class editor, no match.
+  let editingClasses = params.has("classes");
+  let lastPanic = null;
+  const consoleError = console.error.bind(console);
+  console.error = (...args) => {
+    consoleError(...args);
+    const panic = args.map(String).join(" ").match(/panicked at [^\n]*\n([^\n]+)/);
+    if (panic) lastPanic = panic[1];
+  };
+  function engineStopped(detail) {
+    if (!engineStarted || !document.getElementById("ended").hidden) return;
+    const reason = /rust_oom|out of memory/i.test(detail)
+      ? "The game ran out of memory. Close other tabs or pick a smaller map, then try again."
+      : `The game stopped: ${lastPanic ?? detail.split("\n")[0]}`;
+    showEnded("ENGINE STOPPED", reason, { retry: dev ? "Reload" : null, back: "Back to launcher" });
+  }
+  addEventListener("error", (event) => {
+    const detail = `${event.message} ${event.error?.stack ?? ""}`;
+    if (/RuntimeError|unreachable/.test(detail)) engineStopped(detail);
+  });
+  addEventListener("unhandledrejection", (event) => {
+    const detail = `${event.reason?.message ?? event.reason} ${event.reason?.stack ?? ""}`;
+    if (/RuntimeError|unreachable/.test(detail)) engineStopped(detail);
+  });
+
+  // ---- the engine in a Web Worker ------------------------------------------
+  // The page keeps the DOM: it transfers the canvas, forwards input, holds
+  // the pointer lock, makes the audio worklet and decodes streamed sounds;
+  // the worker runs the engine (crates/bootstrap/src/web_worker.rs).
+  let engineWorker = null;
+
+  /** The worklet and its ring, made here because a worker has no
+   * AudioContext; the engine fills the ring (crates/audio/src/web_output.rs). */
+  async function pageAudio() {
+    const frames = 128 * 64;
+    const ring = new SharedArrayBuffer(frames * 2 * 4);
+    const control = new SharedArrayBuffer(4 * 4);
+    const words = new Int32Array(control);
+    let rate = 48000;
+    try {
+      const context = new AudioContext({ sampleRate: 48000 });
+      rate = context.sampleRate;
+      await context.audioWorklet.addModule("audio-worklet.js");
+      const node = new AudioWorkletNode(context, "iw4l-output", {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+        processorOptions: { ring, control, frames },
+      });
+      node.connect(context.destination);
+      Atomics.store(words, 3, 1);
+    } catch (error) {
+      console.warn("audio: the page could not attach its worklet", error);
+      Atomics.store(words, 3, -1);
+    }
+    return { ring, control, frames, rate };
+  }
+
+  /** Every page event the engine listens for, as one small message each
+   * (the numbers are bootstrap::web_worker::input's). */
+  function forwardInput(worker) {
+    const send = (kind, a = 0, b = 0, c = 0, s = "") =>
+      worker.postMessage({ type: "input", kind, a, b, c, s });
+    // Physical pixels of the picture the engine draws (see renderScale).
+    const dpr = () => (window.devicePixelRatio || 1) * renderScale();
+    // Keys the browser keeps: reload and the developer tools.
+    const browsers = (e) => e.code === "F12" || e.code === "F5" ||
+      (e.ctrlKey && e.shiftKey && /^Key[IJC]$/.test(e.code));
+    let escapeSeen = -1e9, blurSeen = -1e9;
+    addEventListener("blur", () => { blurSeen = performance.now(); });
+    canvas.addEventListener("keydown", (e) => {
+      if (e.code === "Escape") escapeSeen = performance.now();
+      send(1, 1, e.repeat ? 1 : 0, 0, `${e.code}\t${e.key}`);
+      if (!browsers(e)) e.preventDefault();
+    });
+    canvas.addEventListener("keyup", (e) => {
+      send(1, 0, 0, 0, `${e.code}\t${e.key}`);
+      if (!browsers(e)) e.preventDefault();
+    });
+    // Mouse buttons come from the `buttons` mask, not from pointerdown and
+    // pointerup alone: a second button pressed while one is held (fire while
+    // aiming) arrives as a pointermove with a changed mask, and the release
+    // of one of two held buttons likewise.
+    // Esc while the game holds the mouse: the browser releases the pointer
+    // and keeps the key, so the engine never hears it and its menu (change
+    // class, leave) never opens. When the lock goes while the engine still
+    // wants it, and neither a focus loss (alt-tab) nor an Esc key (fullscreen
+    // with the keyboard locked delivers it) explains it, say Esc was pressed.
+    document.addEventListener("pointerlockchange", () => {
+      if (document.pointerLockElement || !globalThis.iw4lEngineWantsLock) return;
+      const now = performance.now();
+      if (now - blurSeen < 300 || now - escapeSeen < 300) return;
+      console.log("input: Esc from the pointer lock going");
+      send(1, 1, 0, 0, "Escape\tEscape");
+      setTimeout(() => send(1, 0, 0, 0, "Escape\tEscape"), 50);
+    });
+    const MASK_BUTTONS = [[1, 0], [2, 2], [4, 1], [8, 3], [16, 4]];
+    let held = 0;
+    const syncButtons = (mask) => {
+      if (mask === held) return;
+      for (const [bit, button] of MASK_BUTTONS) {
+        if ((mask & bit) && !(held & bit)) send(2, button, 1);
+        else if (!(mask & bit) && (held & bit)) send(2, button, 0);
+      }
+      held = mask;
+    };
+    canvas.addEventListener("pointerdown", (e) => {
+      canvas.focus();
+      syncButtons(e.buttons);
+    });
+    canvas.addEventListener("pointerup", (e) => syncButtons(e.buttons));
+    canvas.addEventListener("pointermove", (e) => {
+      syncButtons(e.buttons);
+      let dx = 0, dy = 0;
+      const coalesced = e.getCoalescedEvents?.() ?? [];
+      if (coalesced.length) for (const c of coalesced) { dx += c.movementX; dy += c.movementY; }
+      else { dx = e.movementX; dy = e.movementY; }
+      if (dx || dy) send(3, dx, dy);
+      send(4, e.offsetX * dpr(), e.offsetY * dpr());
+    });
+    // Buttons released outside the canvas, or lost with the pointer lock.
+    canvas.addEventListener("pointercancel", () => syncButtons(0));
+    addEventListener("blur", () => syncButtons(0));
+    document.addEventListener("pointerlockchange", () => { if (!document.pointerLockElement) syncButtons(0); });
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const lines = e.deltaMode === 1;
+      const scale = lines ? 1 : dpr();
+      send(5, -e.deltaX * scale, -e.deltaY * scale, lines ? 1 : 0);
+    }, { passive: false });
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    canvas.addEventListener("pointerenter", () => send(8));
+    canvas.addEventListener("focus", () => send(7, 1));
+    canvas.addEventListener("blur", () => send(7, 0));
+    let lastEntries = null;
+    const resize = (entries) => {
+      lastEntries = entries ?? lastEntries;
+      const box = lastEntries?.[0]?.devicePixelContentBoxSize?.[0];
+      const rect = canvas.getBoundingClientRect();
+      const width = box ? Math.round(box.inlineSize * renderScale()) : Math.round(rect.width * dpr());
+      const height = box ? Math.round(box.blockSize * renderScale()) : Math.round(rect.height * dpr());
+      send(6, Math.max(1, width), Math.max(1, height), dpr());
+    };
+    // The same window at another resolution (automatic resolution).
+    resendCanvasSize = () => resize(null);
+    try {
+      new ResizeObserver(resize).observe(canvas, { box: "device-pixel-content-box" });
+    } catch {
+      new ResizeObserver(resize).observe(canvas);
+    }
+  }
+
+  let workerDecoder = null;
+  function decodeForWorker(worker, id, bytes) {
+    workerDecoder ??= new OfflineAudioContext(2, 1, 48000);
+    workerDecoder.decodeAudioData(bytes.buffer)
+      .then((buffer) => {
+        const channels = buffer.numberOfChannels;
+        const frames = buffer.length;
+        const samples = new Float32Array(frames * channels);
+        for (let c = 0; c < channels; c++) {
+          const data = buffer.getChannelData(c);
+          for (let i = 0; i < frames; i++) samples[i * channels + c] = data[i];
+        }
+        worker.postMessage({ type: "decoded", id, channels, rate: buffer.sampleRate, samples }, [samples.buffer]);
+      })
+      .catch((error) => worker.postMessage({ type: "decoded", id, error: String(error) }));
+  }
+
+  function startEngineWorker(module) {
+    return new Promise((resolve, reject) => {
+      const channel = mountedChannel();
+      if (!channel) {
+        reject(new Error("no game folder is mounted"));
+        return;
+      }
+      const dpr = (window.devicePixelRatio || 1) * renderScale();
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.round((rect.width || innerWidth) * dpr));
+      const height = Math.max(1, Math.round((rect.height || innerHeight) * dpr));
+      const offscreen = canvas.transferControlToOffscreen();
+      const worker = new Worker(new URL("./engine-worker.js", import.meta.url), { type: "module" });
+      engineWorker = worker;
+      let started = false;
+      worker.onerror = (event) => {
+        const detail = `${event.message ?? event}`;
+        console.error("engine worker:", detail);
+        if (!started) reject(new Error(detail));
+        else if (/RuntimeError|unreachable|out of memory/i.test(detail)) engineStopped(detail);
+      };
+      worker.onmessage = (event) => {
+        const m = event.data;
+        switch (m.type) {
+          case "started": started = true; resolve(); break;
+          case "failed": reject(new Error(m.message)); break;
+          case "screen": globalThis.iw4lScreen?.(m.screen); break;
+          case "lan": globalThis.iw4lLanStatus?.(m.text); break;
+          case "ended": globalThis.iw4lLanEnded?.(m.reason); break;
+          case "classes": globalThis.iw4lClassesDone?.(); break;
+          case "frame-stats": autoResolution(m.fps, m.p90); break;
+          case "panic": lastPanic = m.text; break;
+          case "decode": decodeForWorker(worker, m.id, m.bytes); break;
+          case "vfs": channel.worker.postMessage(m.message); break;
+          case "cacheWrite": globalThis.iw4lVfs?.cacheWrite(m.path, m.bytes); break;
+          case "cursor":
+            globalThis.iw4lEngineWantsLock = !!m.locked;
+            try {
+              if (m.locked && !document.pointerLockElement) canvas.requestPointerLock?.()?.catch?.(() => {});
+              else if (!m.locked && document.pointerLockElement) document.exitPointerLock();
+            } catch {}
+            canvas.style.cursor = m.visible ? "" : "none";
+            break;
+        }
+      };
+      // The read worker's replies the engine waits for.
+      channel.worker.addEventListener("message", (event) => {
+        if (event.data?.type === "warmed") worker.postMessage(event.data);
+      });
+      // The page's own file progress line read the counters between engine
+      // reads; with the engine elsewhere, read them on a clock.
+      setInterval(() => {
+        try { globalThis.iw4lVfsProgress?.(globalThis.iw4lVfsNet?.()); } catch {}
+      }, 500);
+      const t0 = performance.now();
+      pageAudio().then((audio) => {
+        const t1 = performance.now();
+        const cacheBytes = [...channel.cache.files.values()].reduce((n, b) => n + b.length, 0);
+        worker.postMessage(
+          {
+            pkg: enginePkg,
+            module,
+            canvas: offscreen,
+            search: location.search,
+            protocol: location.protocol,
+            host: location.host,
+            width,
+            height,
+            scale: dpr,
+            vfs: {
+              control: channel.control.buffer,
+              offset: channel.offset.buffer,
+              data: channel.data.buffer,
+              stats: channel.net.buffer,
+              entries: channel.entries,
+              cache: [...channel.cache.files],
+              mountRoot: "/games/Modern Warfare 2",
+              hosted: !!channel.source?.urls,
+            },
+            audio,
+          },
+          [offscreen],
+        );
+        console.log(`engine worker: audio ${(t1 - t0).toFixed(0)} ms, boot posted in ${(performance.now() - t1).toFixed(0)} ms ` +
+          `(cache ${channel.cache.files.size} entries, ${(cacheBytes / 1048576).toFixed(1)} MiB)`);
+        forwardInput(worker);
+      });
+    });
+  }
+
+  /** One overlay for a lost LAN session and for an engine that stopped. */
+  function showEnded(title, reason, { retry, back }) {
+    document.exitPointerLock?.();
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    aimHint.hidden = true;
+    document.getElementById("ended-title").textContent = title;
+    document.getElementById("ended-reason").textContent = reason;
+    const rejoin = document.getElementById("ended-rejoin");
+    const lobby = document.getElementById("ended-lobby");
+    rejoin.hidden = !retry;
+    rejoin.textContent = retry ?? "";
+    lobby.textContent = back;
+    document.getElementById("ended").hidden = false;
+    (rejoin.hidden ? lobby : rejoin).focus();
+  }
+
+  const now = new Date();
+  document.getElementById("stamp").textContent =
+    `NO. ${String(now.getTime()).slice(-6)} · ${now.toISOString().slice(0, 10)}`;
+
+  // What this browser must offer: WebGPU, and cross-origin isolation for the
+  // shared memory the file reader uses.
+  const gpu = !!navigator.gpu && !!(await navigator.gpu.requestAdapter().catch(() => null));
+  line("WebGPU", gpu ? "ok" : "bad", gpu ? "OK" : "MISSING");
+  line("Shared memory", crossOriginIsolated ? "ok" : "bad", crossOriginIsolated ? "OK" : "BLOCKED");
+  // Without these the file reader keeps nothing on disk: every load streams
+  // the whole map again with the tab blocked (Firefox before 140, Safari).
+  const diskCache = typeof Atomics.waitAsync === "function" && !!navigator.storage?.getDirectory;
+  line("Game cache", diskCache ? "ok" : "bad", diskCache ? "ON DISK" : "OFF: EVERY LOAD RE-STREAMS");
+  if (/Firefox\//.test(navigator.userAgent)) {
+    line("Browser", "wait", "FIREFOX: WORKS, BUT LOADS AND FRAMES ARE SLOWER THAN CHROME OR EDGE");
+  }
+  const folderSet = line("Game folder", "wait", "NOT CHOSEN");
+  if (!gpu || !crossOriginIsolated) {
+    pick.disabled = true;
+    line("Use desktop Chrome or Edge", "bad", "!");
+  }
+
+  /** Puts the match into the address bar, where the engine reads its args. */
+  function chooseMatch() {
+    const map = document.getElementById("map").value;
+    const bots = Number(document.getElementById("bots").value);
+    const cmds = `wait world; force_match_start${bots > 0 ? `; bot add ${bots}` : ""}`;
+    const next = new URLSearchParams(params);
+    next.set("map", map);
+    next.set("mode", document.getElementById("mode").value);
+    next.set("textures", texturesSelect.value);
+    next.set("cmds", cmds);
+    history.replaceState(null, "", `?${next}`);
+    return map;
+  }
+
+  // LAN lobby: host or join through the LAN server's relay. The engine reads
+  // `lan`, `host`, `join` and `mode` from the address bar.
+  const nameInput = document.getElementById("name");
+  const roomsList = document.getElementById("rooms");
+
+  /** Console-safe: the name rides in a `set` command. */
+  function playerName() {
+    return nameInput.value.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 16) || "Player";
+  }
+
+  // The chosen name is claimed on the server (unique across players);
+  // the profile line on the slip says how that went.
+  let profileLine = null;
+  function profileSay(text, state) {
+    if (!accounts) return;
+    profileLine ??= line("Profile");
+    profileLine(text, state);
+  }
+  async function saveName() {
+    if (!accounts) return true;
+    const name = playerName();
+    if (name === "Player" || name === account?.name) return true;
+    const response = await fetch("/lan/account/name", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    }).catch(() => null);
+    if (response?.status === 204) {
+      account = { ...(account ?? { files: {} }), name };
+      profileSay(`${name} · SAVED ON THIS SERVER`, "ok");
+      return true;
+    }
+    if (response?.status === 409) {
+      profileSay(`${name} IS TAKEN · PICK ANOTHER`, "bad");
+      return false;
+    }
+    profileSay(`COULD NOT SAVE THE NAME${response ? ` (${response.status})` : ""}`, "bad");
+    return false;
+  }
+  if (accounts) {
+    if (account?.name) nameInput.value = account.name;
+    nameInput.addEventListener("change", () => { saveName(); });
+    if (account?.name) profileSay(`${account.name} · SAVED ON THIS SERVER`, "ok");
+    else profileSay("NEW HERE · TYPE A NAME TO KEEP YOUR RANK AND CLASSES", "wait");
+    // Profile files the engine writes (its account with XP and rank, the
+    // classes) go to the server, a few seconds after the last write.
+    globalThis.iw4lProfileWrite = (path, bytes) => {
+      const name = path.slice("profile/".length);
+      // The server keeps these; settings stay in this browser only.
+      if (!["account.dat", "classes.txt", "camos.txt"].includes(name)) return;
+      clearTimeout(profileTimers.get(name)?.timer);
+      const timer = setTimeout(() => {
+        profileTimers.delete(name);
+        putProfile(name, bytes);
+      }, 3000);
+      profileTimers.set(name, { timer, bytes });
+    };
+  }
+  const profileTimers = new Map();
+  const profileSends = new Set();
+  function putProfile(name, bytes) {
+    const sent = fetch(`/lan/account/file/${encodeURIComponent(name)}`, { method: "PUT", body: bytes })
+      .then((response) => { if (!response.ok) console.warn(`profile: ${name} not saved (${response.status})`); })
+      .catch((error) => console.warn(`profile: ${name} not saved`, error))
+      .finally(() => profileSends.delete(sent));
+    profileSends.add(sent);
+    return sent;
+  }
+  /** Sends the profile files still waiting out their pause, and writes this
+   * browser's cache, before the page navigates away. */
+  function flushProfile() {
+    for (const [name, { timer, bytes }] of profileTimers) {
+      clearTimeout(timer);
+      putProfile(name, bytes);
+    }
+    profileTimers.clear();
+    return Promise.all([...profileSends, mountedChannel()?.cacheFlush?.()]);
+  }
+  /** The server's copy of the profile goes into the file cache the engine
+   * lists at start, replacing whatever this browser kept. */
+  function injectProfile() {
+    const channel = mountedChannel();
+    if (!channel || !account?.files) return;
+    for (const [name, b64] of Object.entries(account.files)) {
+      try {
+        const text = atob(b64);
+        const bytes = new Uint8Array(text.length);
+        for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+        channel.cacheSet(`profile/${name}`, bytes);
+      } catch (error) {
+        console.warn(`profile: ${name} unreadable`, error);
+      }
+    }
+  }
+
+  function lanMatch(extra, cmds) {
+    saveName();
+    const next = new URLSearchParams(params);
+    next.set("lan", "1");
+    next.set("name", playerName());
+    next.set("textures", texturesSelect.value);
+    for (const [key, value] of Object.entries(extra)) next.set(key, value);
+    next.set("cmds", `set ui_player_name ${playerName()}; ${cmds}`);
+    try { localStorage.setItem("iw4l-lan-name", playerName()); } catch {}
+    history.replaceState(null, "", `?${next}`);
+  }
+
+  function hostMatch() {
+    const map = document.getElementById("map").value;
+    const bots = Number(document.getElementById("bots").value);
+    const after = document.getElementById("after").value;
+    const extra = {
+      map,
+      host: `${playerName()} match`,
+      time: document.getElementById("time").value,
+      mode: document.getElementById("mode").value,
+    };
+    // The host starts the next match on its own; everyone in the room follows.
+    if (after !== "stop") extra.next = "15";
+    if (after === "rotate") {
+      // Only maps every player can load: the host's own list when it reads its
+      // own folder.
+      extra.rotation = [...document.getElementById("map").options]
+        .map((option) => option.value)
+        .filter((zone) => !ownFiles || hasMap(zone))
+        .join(",");
+    }
+    const password = document.getElementById("room-password").value.trim();
+    if (password) extra.password = password;
+    lanMatch(extra, `wait world; force_match_start${bots > 0 ? `; bot add ${bots}` : ""}`);
+  }
+
+  // Internet players: their own MW2 folder, read in this browser.
+  let ownPaths = null;
+  const hasMap = (zone) => !ownPaths || ownPaths.has(`zone/english/${zone}.ff`);
+
+  async function useOwnFolder(picked) {
+    folderSet("READING", "wait");
+    const listed = await listPicked(picked);
+    const missing = missingGameFiles(listed.map((entry) => entry.path));
+    if (missing.length) {
+      folderSet("WRONG FOLDER", "bad");
+      line(`No ${missing[0]}`, "bad", "!");
+      return;
+    }
+    if (!(picked instanceof FileList)) folderStore(picked);
+    await mountPicked(listed);
+    ownPaths = new Set(listed.map((entry) => entry.path.toLowerCase()));
+    folderSet(`${listed.length} FILES`, "ok");
+    line("Your own copy", "ok", "LOCAL ONLY");
+    pick.textContent = "Host a match";
+    document.getElementById("repick").hidden = true;
+    // A reload of a match (Rejoin) goes straight back in once the folder is
+    // read; otherwise the room list's next refresh enables Join.
+    if ((params.has("lan") && params.has("map")) || editingClasses) await run();
+  }
+
+  async function chooseOwnFolder() {
+    if (!window.showDirectoryPicker) {
+      document.getElementById("pick-input").click();
+      return;
+    }
+    try {
+      let handle = remembered;
+      if (
+        handle &&
+        (await handle.queryPermission({ mode: "read" })) !== "granted" &&
+        (await handle.requestPermission({ mode: "read" })) !== "granted"
+      ) {
+        handle = null;
+      }
+      handle ??= await window.showDirectoryPicker({ id: "mw2", mode: "read" });
+      await useOwnFolder(handle);
+    } catch (error) {
+      if (error.name !== "AbortError") line(String(error.message || error), "bad", "!");
+    }
+  }
+
+  /** The host's files over the network, or the folder already mounted. */
+  async function mountGames() {
+    if (!ownFiles) await mountDevServer();
+  }
+
+  /** Downloads a map's blocks, as the host's manifest lists them, into this
+   * PC's store before the engine starts: the engine reads files synchronously
+   * and would otherwise hold the page unresponsive for thousands of tunnel
+   * round trips. A map nobody has played on this server yet loads on demand. */
+  // Manifests are kept per texture tier, since a higher tier reads deeper
+  // into every texture; the plain key is the 32 px tier from before tiers.
+  const tierOf = () => Number(params.get("textures") || texturesSelect.value) || 32;
+  const tierName = (tier) =>
+    [...texturesSelect.options].find((option) => Number(option.value) === tier)?.textContent || `${tier} px`;
+  // Block runs only mean something for one block size: the key carries the
+  // store layout (vfs-worker.js LAYOUT), so a layout change starts clean.
+  const STORE_LAYOUT = 4;
+  const manifestKey = (map, tier) => `${map}_t${tier}_l${STORE_LAYOUT}`;
+  // A tier nobody has played yet has no manifest; the next larger tier's
+  // covers it (a capped decode reads the small mips too), so prefetch that
+  // rather than stream every texture with the tab blocked in-game.
+  const SEEDED_TIERS = [16, 32, 64, 128, 256];
+  // The smallest seeded tier at or above the chosen one whose manifest is
+  // mature: it covers the map's own zone completely, which only a session
+  // that finished loading does. A young manifest (a few blocks from one
+  // short session) is merged into it rather than trusted on its own; a
+  // larger tier is never merged in, since it carries bigger mips.
+  async function fetchManifest(map, tier) {
+    const tiers = SEEDED_TIERS.filter((t) => t >= tier);
+    // The map's own file: its zone, or the Hammer map file of a map that
+    // never had one (`iw4l-maps/<map>.vmf`).
+    let zonePath = `zone/english/${map}.ff`;
+    const zoneBlocks = await fetch("/games-index.json", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((entries) => {
+        let zone = entries.find((e) => e.path.toLowerCase() === zonePath);
+        if (!zone) {
+          for (const vmf of [`iw4l-maps/${map}.vmf.z`, `iw4l-maps/${map}.vmf`]) {
+            zone = entries.find((e) => e.path.toLowerCase() === vmf);
+            if (zone) { zonePath = vmf; break; }
+          }
+        }
+        return zone ? Math.ceil(zone.size / 16384) : 0;
+      })
+      .catch(() => 0);
+    const covers = (files) => {
+      const runs = files[zonePath];
+      if (!zoneBlocks || !Array.isArray(runs)) return false;
+      const have = new Set();
+      for (const [first, last] of runs) for (let b = first; b <= last && b < zoneBlocks; b++) have.add(b);
+      return have.size >= zoneBlocks;
+    };
+    const young = [];
+    for (const t of tiers.length ? tiers : [tier]) {
+      const key = manifestKey(map, t);
+      const files = await fetch(`/lan/manifest/${key}`, { cache: "no-store" })
+        .then((response) => (response.ok ? response.json() : null))
+        .catch(() => null);
+      if (!files) continue;
+      if (!covers(files)) { young.push(files); continue; }
+      if (t !== tier) console.log(`manifest: ${map} tier ${tier} not mature; using tier ${t}`);
+      lastManifestKey = key;
+      for (const partial of young) {
+        for (const [path, runs] of Object.entries(partial)) {
+          if (Array.isArray(runs)) files[path] = (files[path] || []).concat(runs);
+        }
+      }
+      return files;
+    }
+    if (young.length) {
+      // Nothing mature at any tier: take what there is for the chosen one.
+      lastManifestKey = manifestKey(map, tier);
+      return young[0];
+    }
+    return null;
+  }
+  let lastManifestKey = null;
+  /** The map's bytes as one file on the host (scripts/web/build-packs.py),
+   * when the host has built it; the worker falls back to ranges otherwise. */
+  const packFor = (key) => (key ? { index: `/packs/${key}.json`, data: `/packs/${key}.pack` } : null);
+
+  let mapWarmed = true;
+  async function prefetchFor(map) {
+    if (ownFiles) return;
+    // The download is the longest wait before a match: it gets the full
+    // loading screen and a real bar, not a chip in the lobby's corner.
+    if (lan) {
+      showLoading(map);
+      loadingStage(`Downloading ${mapName(map)}`, 0);
+      loadingNote("Looking up what this map needs…");
+    }
+    const files = await fetchManifest(map, tierOf());
+    mapWarmed = !!files;
+    if (!files) {
+      if (lan) loadingNote("Nothing to download up front for this map.");
+      return;
+    }
+    const set = line(`Downloading ${map.replace(/^mp_/, "")}`);
+    const mb = (bytes) => `${(bytes / 1048576).toFixed(0)} MB`;
+    const pct = (done, total) => (total ? Math.round((done / total) * 100) : 0);
+    // Whatever is still missing when the engine starts, it streams with the
+    // tab blocked ("page unresponsive" for minutes on a slow link). So a
+    // round that leaves chunks behind is run again — the worker only fetches
+    // what the disk does not hold — and only a download that stops moving
+    // for 45 s hands over early.
+    let fetched = 0;
+    for (let round = 1; round <= 4; round++) {
+      let lastDone = -1;
+      let movedAt = Date.now();
+      let stalled;
+      const watchdog = new Promise((resolve) => {
+        stalled = setInterval(() => {
+          if (Date.now() - movedAt > 45000) resolve(null);
+        }, 1000);
+      });
+      const result = await Promise.race([
+        prefetchHosted(files, ({ done, total }) => {
+          if (done !== lastDone) { lastDone = done; movedAt = Date.now(); }
+          const retry = round > 1 ? ` (retry ${round - 1})` : "";
+          set(total ? `${mb(done)} / ${mb(total)}${retry}` : "…", "wait");
+          if (lan && total) {
+            loadingStage(`Downloading ${mapName(map)} — ${pct(done, total)}%`, done / total);
+            loadingNote(`${mb(done)} of ${mb(total)}${retry}. Kept on this PC: next time is instant.`);
+          }
+        }, undefined, packFor(lastManifestKey)),
+        watchdog,
+      ]);
+      clearInterval(stalled);
+      if (result === null) {
+        set("STALLED; THE REST STREAMS IN-GAME", "wait");
+        if (lan) loadingNote("The download stopped moving; the rest streams in-game.");
+        return;
+      }
+      fetched += result.bytes;
+      if (!result.missing) {
+        set(fetched ? mb(fetched) : "READY", "ok");
+        if (lan) { loadingStage(`${mapName(map)} ready`, 1); loadingNote(fetched ? `${mb(fetched)} downloaded.` : "Already on this PC."); }
+        return;
+      }
+      set(`${mb(result.missing)} DID NOT ARRIVE; RETRYING`, "wait");
+    }
+    set("INCOMPLETE; THE REST STREAMS IN-GAME", "bad");
+  }
+
+  /** While the engine runs a hosted map, keep telling the host which blocks
+   * it read, so the next player can fetch them up front. */
+  /** Once per session, this PC's translated shaders and navigation go to
+   * the relay, which hands them to the next player's cold cache. */
+  let seedPosted = false;
+  async function publishCacheSeed() {
+    if (ownFiles || seedPosted) return;
+    // The relay keeps the seed with the most records; only a richer one is
+    // worth packing (packing and compressing tens of MB takes seconds of the
+    // page's main thread, mid-match).
+    const kept = await fetch("/lan/cache-seed", { method: "HEAD", cache: "no-store" })
+      .then((response) => (response.ok ? Number(response.headers.get("x-records")) || 0 : 0))
+      .catch(() => 0);
+    const seed = await cacheSeed(kept).catch((error) => (console.warn("cache seed", error), null));
+    if (!seed) {
+      console.log(`cache seed: nothing richer than the relay's (${kept} records) to post`);
+      // Once a session: the check reads the whole cache pack.
+      if (kept) seedPosted = true;
+      return;
+    }
+    seedPosted = true;
+    const reply = await fetch("/lan/cache-seed", {
+      method: "POST",
+      headers: { "content-type": "application/octet-stream", "x-records": String(seed.records) },
+      body: seed.blob,
+    }).catch(() => null);
+    console.log(`cache seed: ${seed.records} entries, ${(seed.blob.size / 1048576).toFixed(1)} MB posted (${reply?.status ?? "failed"})`);
+  }
+
+  function publishManifest(map) {
+    if (ownFiles) return;
+    const tier = tierOf();
+    const urls = [`/lan/manifest/${manifestKey(map, tier)}`];
+    let last = null;
+    const post = async () => {
+      const files = await hostedManifest();
+      if (!files) return;
+      last = JSON.stringify(files);
+      for (const url of urls) {
+        await fetch(url, {
+          method: "POST", headers: { "content-type": "application/json" }, body: last,
+        }).catch(() => {});
+      }
+      publishCacheSeed();
+    };
+    setTimeout(post, 30000);
+    setInterval(post, 60000);
+    addEventListener("pagehide", () => {
+      if (last) for (const url of urls) navigator.sendBeacon(url, new Blob([last], { type: "application/json" }));
+    });
+  }
+
+  /** Once the match is on, fetch the next texture tiers' blocks quietly in
+   * the background (two streams, so play is not starved) and move the saved
+   * Textures setting up as each one lands: the match after this one starts
+   * just as fast, with better textures. Live swapping is the engine's job
+   * later; this gets the bytes onto the PC. */
+  const TIERS = [16, 32, 64, 128, 256, 512];
+  let upgrading = false;
+  async function upgradeTextures(map) {
+    if (ownFiles || upgrading) return;
+    upgrading = true;
+    // Measured (Rust, warm): 128 px costs the same load time and ~15 MB more
+    // than 32 px, so 128 is the floor everyone gets; 256 is for PCs with room.
+    const ceiling = (navigator.deviceMemory || 8) >= 8 ? 256 : 128;
+    const note = document.getElementById("roster-bg");
+    const mb = (bytes) => `${(bytes / 1048576).toFixed(0)} MB`;
+    let got = null;
+    for (const tier of TIERS.filter((tier) => tier > tierOf() && tier <= ceiling)) {
+      const files = await fetchManifest(map, tier);
+      if (!files) break;
+      const label = tierName(tier);
+      note.hidden = false;
+      note.textContent = `Fetching ${label} textures for next time…`;
+      await prefetchHosted(files, ({ done, total }) => {
+        note.textContent = `Fetching ${label} textures for next time · ${mb(done)} / ${mb(total)}`;
+      }, 2);
+      got = label;
+      saved.set("textures", String(tier));
+      texturesSelect.value = String(tier);
+    }
+    note.hidden = !got;
+    if (got) note.textContent = `${got} textures ready for the next match`;
+  }
+
+  /** Over the game: who is in this room, kept current, with the link that
+   * drops a friend straight in (the tunnel address when there is one). A
+   * joiner knows the room id; the host finds its room by player name. */
+  const roster = document.getElementById("roster");
+  function showRoster(roomId) {
+    const link = document.getElementById("roster-link");
+    document.getElementById("roster-copy").onclick = () => {
+      navigator.clipboard?.writeText(link.value).catch(() => {});
+      link.select();
+    };
+    let hidden = false;
+    let known = false;
+    // The game owns the mouse while it is captured, so the card only shows
+    // (and is clickable) while the pointer is free: press Esc to see it.
+    const apply = () => {
+      roster.hidden = hidden || !known || !!document.pointerLockElement;
+    };
+    document.addEventListener("pointerlockchange", apply);
+    roster.querySelector(".close").onclick = () => {
+      hidden = true;
+      apply();
+    };
+    let id = roomId;
+    const poll = async () => {
+      const rooms = await fetch("/lan/rooms", { cache: "no-store" })
+        .then((response) => response.json())
+        .catch(() => null);
+      const mine = id
+        ? rooms?.find((room) => room.id === id)
+        : rooms?.find((room) => room.host === playerName() || room.name === playerName());
+      if (mine) {
+        id = mine.id;
+        document.getElementById("roster-title").textContent = mine.name;
+        document.getElementById("roster-meta").textContent =
+          `${mapName(mine.map)} · ${modeName(mine.mode)} · ${mine.players}/${mine.max_players}` +
+          (mine.in_match ? " · in match" : " · lobby");
+        document.getElementById("roster-names").replaceChildren(...rosterList(mine).children);
+        link.value = `${info?.public || location.origin}/?join=${mine.id}`;
+        known = true;
+        apply();
+      } else if (id) {
+        // The room is gone: the host left, or this engine did.
+        known = false;
+        apply();
+      }
+      if (engineStarted) setTimeout(poll, 3000);
+    };
+    poll();
+  }
+
+  // The engine reports between-match news here ("Next match: Rust in 15 s").
+  const lanStatus = document.getElementById("lan-status");
+  // Between matches the engine sits on its own main menu, which means
+  // nothing here: the loading screen covers it with the news instead, and
+  // stays up through the next map's load.
+  let intermission = false;
+  globalThis.iw4lLanStatus = (text) => {
+    lanStatus.textContent = text;
+    lanStatus.hidden = !text;
+    if (!engineStarted) return;
+    if (text) {
+      intermission = true;
+      showLoading(params.get("map") || mapSelect.value);
+      loadingStage(text, null);
+      loadingNote(/next match/i.test(text) ? "The next round starts on its own." : "");
+      // Nobody has to wait for the next match.
+      const note = document.getElementById("loading-note");
+      const leave = document.createElement("a");
+      leave.href = "/";
+      leave.textContent = " Back to the lobby";
+      leave.onclick = (event) => { event.preventDefault(); backToLobby("Leaving"); };
+      note.append(leave);
+    } else if (intermission) {
+      intermission = false;
+      if (!loading.hidden) loadingStage("Starting the match", null);
+    }
+  };
+
+  async function joinRoom(room) {
+    const extra = { map: room.map, mode: room.mode, join: room.id };
+    if (room.password) {
+      const password = prompt(`Password for ${room.name}`);
+      if (password === null) return;
+      extra.password = password;
+    }
+    lanMatch(extra, "wait world");
+    await mountGames();
+    await prefetchFor(room.map);
+    await run();
+    publishManifest(room.map);
+    showRoster(room.id);
+  }
+
+  async function refreshRooms() {
+    if (start.hidden) return;
+    const rooms = await fetch("/lan/rooms", { cache: "no-store" })
+      .then((response) => response.json())
+      .catch(() => null);
+    roomsList.replaceChildren();
+    const count = document.getElementById("board-count");
+    if (!rooms?.length) {
+      const li = document.createElement("li");
+      li.className = "none";
+      li.textContent = rooms
+        ? "Nobody is hosting right now. Set one up on the right and press Host."
+        : "The host PC is not answering.";
+      roomsList.append(li);
+      count.textContent = rooms ? "NONE RUNNING" : "OFFLINE";
+    } else {
+      count.textContent = `${rooms.length} RUNNING`;
+    }
+    if (rooms?.length && !mapSelect.matches(":focus")) setArt(rooms[0].map, false);
+    for (const room of rooms ?? []) {
+      const li = document.createElement("li");
+      li.className = "card";
+      const art = document.createElement("img");
+      art.className = "art";
+      art.src = mapArt(room.map);
+      art.alt = "";
+      art.decoding = "async";
+      const map = document.createElement("h3");
+      map.className = "map";
+      map.textContent = mapName(room.map);
+      const state = document.createElement("div");
+      state.className = "state";
+      state.innerHTML =
+        `<b>${modeName(room.mode)}</b> · ${room.players}/${room.max_players} players · ` +
+        (room.in_match ? `<span class="live">IN MATCH</span>` : "in the lobby") +
+        (room.password ? " · password" : "") + (room.locked ? " · locked" : "");
+      const names = rosterList(room);
+      const join = document.createElement("button");
+      join.type = "button";
+      join.className = "join";
+      join.textContent = "JOIN";
+      join.disabled =
+        pick.disabled || room.locked || room.players >= room.max_players ||
+        (ownFiles && (!ownPaths || !hasMap(room.map)));
+      if (ownFiles && !ownPaths) join.title = "Choose your MW2 folder first";
+      else if (!hasMap(room.map)) join.title = `Your install has no ${room.map}`;
+      else if (room.players >= room.max_players) join.title = "Full";
+      join.onclick = () => joinRoom(room);
+      li.append(art, map, state, names, join);
+      roomsList.append(li);
+    }
+    setTimeout(refreshRooms, 2000);
+  }
+
+  const mapName = (zone) =>
+    [...mapSelect.options].find((option) => option.value === zone)?.textContent ?? zone.replace(/^mp_/, "");
+  const modeName = (mode) =>
+    ({ dm: "Free-for-all", war: "Team deathmatch", sd: "Search and destroy" })[mode] ?? mode;
+
+  /** The players in a room as tags, the host's filled in. */
+  function rosterList(room) {
+    const list = document.createElement("ul");
+    list.className = "roster";
+    const names = room.names?.length ? room.names : [room.host || room.name];
+    names.forEach((name, i) => {
+      const tag = document.createElement("li");
+      tag.textContent = name || "—";
+      if (i === 0) tag.className = "host";
+      list.append(tag);
+    });
+    return list;
+  }
+
+  // Loading overlay. The engine draws its own loading screen only once the
+  // map's data is in, which over a tunnel is minutes of black canvas; the
+  // page covers that time with what it knows.
+  const loading = document.getElementById("loading");
+  function loadingNote(text) {
+    document.getElementById("loading-note").textContent = text;
+  }
+  function loadingStage(text, fraction) {
+    document.getElementById("loading-stage").textContent = text;
+    const bar = document.getElementById("loading-bar");
+    bar.classList.toggle("busy", fraction == null);
+    bar.querySelector("i").style.width = fraction == null ? "" : `${Math.round(fraction * 100)}%`;
+  }
+  /** The map's loadscreen, pulled from the game's own archives, behind the
+   * lobby and the loading screen. */
+  function mapArt(map) {
+    return `assets/maps/${map}.jpg`;
+  }
+  function setArt(map, preview = true) {
+    if (!map) return;
+    document.documentElement.style.setProperty("--art", `url("${mapArt(map)}")`);
+    if (preview) {
+      document.getElementById("host-art").src = mapArt(map);
+      // The select's own label: this runs before the name table is built.
+      document.getElementById("host-art-name").textContent =
+        [...mapSelect.options].find((option) => option.value === map)?.textContent || map;
+    }
+  }
+  function showLoading(map, title) {
+    setArt(map, false);
+    document.getElementById("loading-map").textContent = (title || (map ? mapName(map) : "Loading")).toUpperCase();
+    document.getElementById("loading-error").textContent = "";
+    document.getElementById("loading-note").textContent = "";
+    loading.hidden = false;
+  }
+  const hideLoading = () => { loading.hidden = true; };
+  let playedMatch = false;
+  let lobbyReturn = null;
+  /** Leaves the match for the lobby once the engine's last profile write
+   * (stats, XP) is saved. */
+  async function backToLobby(title) {
+    document.exitPointerLock?.();
+    showLoading(params.get("map") || mapSelect.value, title);
+    loadingStage("Back to the lobby", null);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await Promise.race([flushProfile(), new Promise((resolve) => setTimeout(resolve, 8000))]);
+    location.assign("/");
+  }
+  // The engine reports its screen (crates/net/src/plugin.rs); the match is
+  // there at InGame. A click that captures the mouse means the same thing.
+  globalThis.iw4lScreen = (screen) => {
+    if (screen === "InGame" || screen === "ClassSelect") {
+      playedMatch = true;
+      clearTimeout(lobbyReturn);
+      hideLoading();
+      if (lan && params.get("map")) upgradeTextures(params.get("map"));
+    }
+    // The class editor opens over the engine's own menu.
+    else if (screen === "MainMenu" && editingClasses) hideLoading();
+    else if (screen === "Loading" && !loading.hidden) loadingStage("Building the map");
+    else if (screen === "MainMenu" && lan && playedMatch && !editingClasses
+      && !params.has("next") && !params.has("join")) {
+      // A match ended (or the player left it): the engine goes back to its
+      // own main menu, but on this site the lobby is the menu. A host whose
+      // room plays on (`next`) counts down to the next match, and a joiner
+      // waits for the host's (both with a link back); anyone else goes back
+      // to the lobby, the profile saved first.
+      clearTimeout(lobbyReturn);
+      lobbyReturn = setTimeout(() => { if (!intermission) backToLobby("Match over"); }, 1500);
+    }
+    else if (screen === "MainMenu" && engineStarted && !loading.hidden && !intermission) {
+      // The engine gave up on the map and went back to its menu (its console
+      // says why: a zone it could not read, usually); do not sit on "Building
+      // the map" forever.
+      document.getElementById("loading-error").innerHTML =
+        "The map could not be loaded, so the engine went back to its menu. " +
+        "Press F12 for the reason, or <a href=\"./\">go back to the lobby</a> and try again.";
+      loadingStage("Stopped", 0);
+    }
+  };
+  document.addEventListener("pointerlockchange", () => {
+    if (document.pointerLockElement) hideLoading();
+  });
+
+  async function run() {
+    start.hidden = true;
+    engineStarted = true;
+    aimHint.hidden = dev || editingClasses;
+    canvas.focus();
+    if (lan) {
+      showLoading(params.get("map") || mapSelect.value, editingClasses ? "Create a Class" : null);
+      loadingStage("Fetching the engine (16 MB, kept after the first time)");
+    }
+    try {
+      const module = await engineModule;
+      if (lan) loadingStage("Starting the engine");
+      injectProfile();
+      if (workerMode) await startEngineWorker(module);
+      else globalThis.iw4lWasm = await (module ? init({ module_or_path: module }) : init());
+      if (lan) loadingStage(editingClasses ? "Opening your classes" : "Starting the match");
+      // Without a manifest the engine pulls the map block by block while the
+      // tab is blocked; say so rather than look hung.
+      if (lan && !mapWarmed && !editingClasses) {
+        document.getElementById("loading-note").textContent =
+          "Nobody has played this map on this server yet, so this tab stops responding for a few minutes while it streams. From the next load on it is a progress bar.";
+      }
+    } catch (error) {
+      if (enginePkg !== "pkg" && !engineParam) {
+        // The threaded bundle did not come up here: once more on the
+        // stable one, which needs neither threads nor shared memory.
+        console.warn(`engine ${enginePkg} failed to start, retrying on the stable bundle`, error);
+        const next = new URLSearchParams(location.search);
+        next.set("engine", "stable");
+        loadingStage("Retrying with the stable engine");
+        location.replace(`${location.pathname}?${next}`);
+        return;
+      }
+      document.getElementById("loading-error").textContent =
+        `The engine could not start in this browser: ${error?.message || error}. ` +
+        "Use a current Chrome or Edge; the WebGPU chip at the top of the lobby says whether this browser can run it.";
+      loadingStage("Stopped", 0);
+      throw error;
+    }
+  }
+
+  async function usePicked(picked) {
+    folderSet("READING", "wait");
+    const listed = await listPicked(picked);
+    const missing = missingGameFiles(listed.map((entry) => entry.path));
+    if (missing.length) {
+      folderSet("WRONG FOLDER", "bad");
+      line(`No ${missing[0]}`, "bad", "!");
+      return;
+    }
+    folderSet(`${listed.length} FILES`, "ok");
+    const map = document.getElementById("map").value;
+    if (!listed.some((entry) => entry.path.toLowerCase() === `zone/english/${map}.ff`)) {
+      line(`No ${map}.ff in this install`, "bad", "!");
+      return;
+    }
+    line("Reading", "ok", "LOCAL ONLY");
+    if (!(picked instanceof FileList)) folderStore(picked);
+    await mountPicked(listed);
+    chooseMatch();
+    await run();
+  }
+
+  /** Hosts with the slip's settings: the room appears on everyone's board. */
+  async function hostNow() {
+    if (!hasMap(mapSelect.value)) {
+      line(`No ${mapSelect.value}.ff in your install`, "bad", "!");
+      return;
+    }
+    hostMatch();
+    await mountGames();
+    await prefetchFor(mapSelect.value);
+    await run();
+    publishManifest(mapSelect.value);
+    showRoster(null);
+  }
+  document.getElementById("host").onclick = () => {
+    if (ownFiles && !ownPaths) {
+      line("Choose your MW2 folder first", "bad", "!");
+      return;
+    }
+    hostNow();
+  };
+
+  /** The engine's own class editor, before any match: the classes save to
+   * this player's profile as they change and the next match reads them.
+   * Backing out of the editor returns here (`iw4lClassesDone`). */
+  function classesAddress() {
+    const next = new URLSearchParams(params);
+    for (const key of ["lan", "map", "join", "host", "password", "players", "mode", "time", "next", "rotation"]) {
+      next.delete(key);
+    }
+    next.set("classes", "1");
+    next.set("textures", texturesSelect.value);
+    next.set("cmds", `set ui_player_name ${playerName()}; lobbyclasses`);
+    return next;
+  }
+  async function editClasses() {
+    if (ownFiles && !ownPaths) {
+      line("Choose your MW2 folder first", "bad", "!");
+      return;
+    }
+    saveName();
+    editingClasses = true;
+    history.replaceState(null, "", `?${classesAddress()}`);
+    await mountGames();
+    await run();
+  }
+  document.getElementById("cac").onclick = () => editClasses();
+  globalThis.iw4lClassesDone = async () => {
+    if (!editingClasses) return;
+    document.exitPointerLock?.();
+    showLoading(mapSelect.value, "Create a Class");
+    loadingStage("Saving your classes");
+    // The engine saves as the classes change; its last write may still be on
+    // its way from the engine's worker.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await Promise.race([flushProfile(), new Promise((resolve) => setTimeout(resolve, 8000))]);
+    location.assign(lan ? "/" : location.pathname + (dev ? "?dev" : ""));
+  };
+
+  pick.onclick = async () => {
+    if (ownFiles && !ownPaths) {
+      await chooseOwnFolder();
+    } else if (lan) {
+      await hostNow();
+    } else if (dev) {
+      chooseMatch();
+      await run();
+    } else if (window.showDirectoryPicker) {
+      try {
+        // A remembered folder needs only this click to be read again.
+        let handle = remembered;
+        if (
+          handle &&
+          (await handle.queryPermission({ mode: "read" })) !== "granted" &&
+          (await handle.requestPermission({ mode: "read" })) !== "granted"
+        ) {
+          handle = null;
+        }
+        handle ??= await window.showDirectoryPicker({ id: "mw2", mode: "read" });
+        await usePicked(handle);
+      } catch (error) {
+        if (error.name !== "AbortError") line(String(error.message || error), "bad", "!");
+      }
+    } else {
+      document.getElementById("pick-input").click();
+    }
+  };
+  document.getElementById("pick-input").onchange = (event) =>
+    (ownFiles ? useOwnFolder : usePicked)(event.target.files);
+  document.getElementById("repick").onclick = () => {
+    remembered = null;
+    pick.click();
+  };
+
+  // The engine calls this when its relay session ends (failed, or the host
+  // closed the room). Its own frontend cannot rejoin or reach the lobby.
+  globalThis.iw4lLanEnded = async (reason) => {
+    if (!lan) return;
+    const room = params.get("join");
+    const rooms = await fetch("/lan/rooms", { cache: "no-store" })
+      .then((response) => response.json())
+      .catch(() => []);
+    const open = !!room && rooms.some((listed) => listed.id === room);
+    showEnded("DISCONNECTED", reason, { retry: open ? "Rejoin" : null, back: "Back to lobby" });
+  };
+  // The lobby or launcher: this page without the match in its address.
+  document.getElementById("ended-lobby").onclick = () =>
+    location.assign(lan ? "/" : location.pathname + (dev ? "?dev" : ""));
+  // Same URL, same room: a fresh page joins the running match again.
+  document.getElementById("ended-rejoin").onclick = () => location.reload();
+
+  let remembered = null;
+  if ((!lan || ownFiles) && !dev && window.showDirectoryPicker && !pick.disabled) {
+    remembered = await folderStore();
+    if (remembered) {
+      pick.textContent = `Play: ${remembered.name}`;
+      document.getElementById("repick").hidden = false;
+      folderSet("REMEMBERED", "ok");
+    }
+  }
+
+  if (lan && ownFiles) {
+    document.querySelector(".lead.lan-only").textContent =
+      "Online lobby. Everyone plays from their own Modern Warfare 2 PC install: " +
+      "choose your folder, then host a match or join one from the slip.";
+    const rejoining = params.has("lan") && params.has("map");
+    pick.textContent = remembered
+      ? `${rejoining ? "Rejoin" : "Use"}: ${remembered.name}`
+      : `Choose your Modern Warfare 2 folder${rejoining ? " to rejoin" : ""}`;
+    if (remembered) document.getElementById("repick").hidden = false;
+    folderSet(remembered ? "REMEMBERED" : "NOT CHOSEN", remembered ? "ok" : "wait");
+    try { nameInput.value = localStorage.getItem("iw4l-lan-name") || ""; } catch {}
+    refreshRooms();
+    // A reload of a match comes straight back if the folder is still allowed.
+    if (rejoining && (await remembered?.queryPermission({ mode: "read" })) === "granted") {
+      await useOwnFolder(remembered);
+    }
+  } else if (lan) {
+    document.getElementById("lan-host").textContent =
+      location.hostname === "localhost" ? "this PC" : location.hostname;
+    // The slip's own button hosts; the crate shows the board instead.
+    pick.hidden = true;
+    folderSet("FROM SERVER", "ok");
+    try { nameInput.value = localStorage.getItem("iw4l-lan-name") || ""; } catch {}
+    // The host's files arrive in blocks the worker keeps on this PC; say how
+    // much crossed the network and how much the cache answered. The main
+    // thread only paints between engine reads, so the line lags under load.
+    let hostLine = null;
+    const mb = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`;
+    globalThis.iw4lVfsProgress = (p) => {
+      hostLine ??= line("Files from host");
+      const parts = [`${mb(p.netBytes)} downloaded`];
+      if (p.diskBytes) parts.push(`${mb(p.diskBytes)} from this PC's cache`);
+      if (p.storeState < 0) parts.push("not kept: storage unavailable");
+      hostLine(parts.join(" · "), p.storeState < 0 ? "wait" : "ok");
+      if (!loading.hidden) document.getElementById("loading-note").textContent = parts.join(" · ");
+    };
+    refreshRooms();
+    // A URL that already names a match (a reload, or a test) starts at once.
+    if (params.has("lan") && params.has("map")) {
+      await mountDevServer();
+      await prefetchFor(params.get("map"));
+      await run();
+      publishManifest(params.get("map"));
+      showRoster(params.get("join"));
+    } else if (editingClasses) {
+      await mountDevServer();
+      await run();
+    } else if (params.has("join")) {
+      // The host's "join this match" link: straight into their room.
+      const rooms = await fetch("/lan/rooms", { cache: "no-store" })
+        .then((response) => response.json())
+        .catch(() => null);
+      const room = rooms?.find((room) => room.id === params.get("join"));
+      if (room) await joinRoom(room);
+      else line("That match has ended; ask the host for a new link", "bad", "!");
+    }
+  } else if (dev) {
+    // Dev: the local server mounts the developer's own install; with map and
+    // cmds already in the address bar, start straight away.
+    folderSet("DEV SERVER", "ok");
+    await mountDevServer();
+    if (params.has("map")) await run();
+  }
+</script>
+</body>
+</html>

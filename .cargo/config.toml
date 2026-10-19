@@ -1,0 +1,7 @@
+[alias]
+xtask = "run --quiet --package xtask --"
+
+# Browser build (`cargo build --target wasm32-unknown-unknown`): getrandom 0.3
+# reaches the Web Crypto API only through its `wasm_js` backend.
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

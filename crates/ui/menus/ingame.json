@@ -1,0 +1,52 @@
+[
+  {
+    "name": "class",
+    "base": "class",
+    "item_copies": [
+      {
+        "index": 31,
+        "fields": {
+          "rect": {
+            "y": 128
+          }
+        }
+      },
+      {
+        "index": 29,
+        "fields": {
+          "name": "iw4l_callsign",
+          "text_key": "Callsign",
+          "rect": {
+            "y": 128
+          },
+          "vis_exp": "",
+          "handlers": {
+            "action": [
+              {
+                "Script": "play mouse_click; open callsign_setup;"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "index": 29,
+        "fields": {
+          "name": "iw4l_killstreaks",
+          "text_key": "Killstreaks",
+          "rect": {
+            "y": 148
+          },
+          "vis_exp": "",
+          "handlers": {
+            "action": [
+              {
+                "Script": "play mouse_click; open killstreak_setup;"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+]

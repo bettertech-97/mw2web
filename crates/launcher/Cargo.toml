@@ -1,0 +1,34 @@
+[package]
+name = "launcher"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The binary. Process entry only: allocator, argv, env, log init; assembly lives in bootstrap."
+
+[[bin]]
+name = "iw4l"
+path = "src/main.rs"
+
+[features]
+bevy-debug = ["bootstrap/bevy-debug"]
+bevy-trace = ["bootstrap/bevy-trace"]
+
+[dependencies]
+updater = { path = "../updater" }
+diag.workspace = true
+asset_transport.workspace = true
+bootstrap = { path = "../bootstrap" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+bevy = { workspace = true, features = ["web", "webgpu"] }
+console_error_panic_hook = "0.1"
+wasm-bindgen = "0.2"
+web_threads.workspace = true
+console.workspace = true
+net.workspace = true
+asset_material = { path = "../asset_material" }
+web-sys = { version = "0.3", features = ["Window", "Location", "UrlSearchParams"] }
+
+[lints]
+workspace = true

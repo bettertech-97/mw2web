@@ -1,0 +1,38 @@
+# Machine-local config (games paths, etc.)
+.env
+
+# Rust
+/target/
+**/target/
+/dist/
+
+# Runtime output next to the binary / cwd.
+iw4l-artifacts
+iw4l.community.json
+iw4l.community.*.tmp
+
+# Agent working memory. None of it is the product: the artifacts, the externals,
+# the agent clones and the RE tooling and its bases all stay on this machine.
+/context/
+
+# Browser build outputs and dev logs
+/web/pkg/
+/web/dev.log
+/web/shots/
+/web/pkg-perf/
+/target-perf/
+/target-online/
+/target-r2/
+/web/pkg-base/
+/web/pkg-simd/
+/web/pkg-*/
+/web/pkg-deploy/
+/web/pkg-prev/
+/target-threads/
+
+# Machine-local deploy target (scripts/web/deploy-exp.sh)
+/scripts/web/deploy.env
+
+# Page assets (fonts, textures, map art) are supplied locally; see web/assets/README.md
+/web/assets/*
+!/web/assets/README.md
