@@ -187,6 +187,10 @@
   th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
   th { color: var(--dim); font-weight: 400; white-space: nowrap; }
   td:first-child { color: var(--text); white-space: nowrap; }
+  /* Measured gains: descriptions wrap; the result reads in the lobby's green. */
+  .gains td:first-child { white-space: normal; }
+  .gains td:nth-child(2) { color: var(--dim); }
+  .gains td:last-child { color: var(--ok); font-weight: 700; }
 
   .browsers { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 6px 0 12px; }
   .browser { border: 1px solid var(--line); border-left: 3px solid var(--line); padding: 10px 12px; background: rgb(255 255 255 / 0.03); }
@@ -287,6 +291,7 @@
         <li><a href="#controls">Controls</a></li>
         <li><a href="#fixes">When something goes wrong</a></li>
         <li><a href="#how">How it works</a></li>
+        <li><a href="#speed">Speed and what's next</a></li>
         <li><a href="#follow">Follow</a></li>
       </ol>
     </nav>
@@ -431,6 +436,33 @@
           <li><strong>The Counter-Strike maps</strong> are converted from the original level files, with Counter-Strike 2's textures, props and radar pictures added on top.</li>
         </ul>
         <p>The code is open source under Apache 2.0, built on <a href="https://github.com/vladtrc/iw4L" target="_blank" rel="noopener">IW4L</a>: read it at <a href="https://github.com/bettertech-97/mw2web" target="_blank" rel="noopener">github.com/bettertech-97/mw2web</a>. It contains no game files; you need your own copy of the game to run it yourself.</p>
+      </section>
+
+      <section id="speed" aria-labelledby="speed-h">
+        <h2 id="speed-h">Speed and what's next</h2>
+        <p>What we've changed so far, measured in desktop Chrome on a 16-core PC.</p>
+        <table class="gains">
+          <thead><tr><th scope="col">Change</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+          <tbody>
+            <tr><td>Game logic and drawing run side by side on separate threads</td><td>54–76 fps</td><td>98–158 fps</td></tr>
+            <tr><td>Loading runs on several threads</td><td>35 s first load</td><td>14.5 s</td></tr>
+            <tr><td>Weapons build after you spawn instead of before</td><td>18 s repeat load</td><td>14 s</td></tr>
+            <tr><td>Map files arrive as one bundle instead of ~1,100 small requests</td><td>28 s download</td><td>~10 s</td></tr>
+            <tr><td>The engine download is compressed</td><td>114 MB</td><td>16 MB</td></tr>
+            <tr><td>Shaders compile on half your cores, not all of them</td><td>100% CPU while loading</td><td>72%</td></tr>
+            <tr><td>Sounds are fetched before they first play</td><td>0.1–0.17 s freezes after explosions</td><td>none</td></tr>
+          </tbody>
+        </table>
+        <p class="dim">The shader limit costs a second or two of load time (about 3 s on an 8-thread PC) but keeps the rest of your PC usable while a map loads. Auto resolution, sound on its own thread and the engine running off the page's main thread also cut stutter.</p>
+        <h3>What's next</h3>
+        <ul class="plain">
+          <li><strong>Memory.</strong> A map uses about 2.5 GB of the browser's memory, and Inferno gets close to the 4 GB limit. Loading only the weapons people actually use should cut about a gigabyte.</li>
+          <li><strong>Faster repeat loads,</strong> by compiling the shaders you see first and caching the menu data.</li>
+          <li><strong>More frames,</strong> by moving character animation to the graphics card and trimming per-object work.</li>
+          <li><strong>Better Counter-Strike maps:</strong> real surface detail, prop collision, the missing props on Nuke and Overpass, and better lighting, by importing Counter-Strike 2's own map data.</li>
+          <li><strong>Firefox</strong> catching up with Chrome.</li>
+        </ul>
+        <p>The full list with every measurement is in <a href="https://github.com/bettertech-97/mw2web/blob/main/PERFORMANCE.md" target="_blank" rel="noopener">PERFORMANCE.md</a> on GitHub.</p>
       </section>
 
       <section id="follow" aria-labelledby="follow-h">

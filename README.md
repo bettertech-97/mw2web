@@ -19,7 +19,7 @@ without patching or replacing its files.
 | File streaming | Game files stream from the host in small blocks and are kept in the browser's private file system. Each load records which blocks a map reads, so the next player's download is prefetched in bulk. |
 | Lobby | A web lobby (`web/index.html`) over the relay server in `crates/iw4l-master` (`lan` mode): a match list, hosting with passwords and map rotation, Create a Class, and accounts. |
 | Counter-Strike maps | `crates/source_map` compiles Hammer `.vmf` maps into the engine's world, collision, lightmaps and entities; `crates/cs2_textures` pulls their textures, props and radar pictures from a Counter-Strike 2 install. |
-| Performance | Frame pacing, automatic render resolution, capped pipeline compilation while loading, and many render and simulation optimizations. |
+| Performance | Frame pacing, automatic render resolution, capped pipeline compilation while loading, and many render and simulation optimizations. [PERFORMANCE.md](PERFORMANCE.md) lists each one with its measured effect, and what is still left to do. |
 
 ## Build
 
