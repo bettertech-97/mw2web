@@ -1551,8 +1551,11 @@
   // mature: it covers the map's own zone completely, which only a session
   // that finished loading does. A young manifest (a few blocks from one
   // short session) is merged into it rather than trusted on its own; a
-  // larger tier is never merged in, since it carries bigger mips.
-  async function fetchManifest(map, tier) {
+  // larger tier is never merged in, since it carries bigger mips. With
+  // nothing mature at or above the tier, `lower` takes the largest mature
+  // smaller tier: it still names the map's zone, props, sounds and every
+  // texture's smaller mips, so only the bigger mips stream in game.
+  async function fetchManifest(map, tier, { lower = true } = {}) {
     const tiers = SEEDED_TIERS.filter((t) => t >= tier);
     // The map's own file: its zone, or the Hammer map file of a map that
     // never had one (`iw4l-maps/<map>.vmf`).
@@ -1577,12 +1580,13 @@
       for (const [first, last] of runs) for (let b = first; b <= last && b < zoneBlocks; b++) have.add(b);
       return have.size >= zoneBlocks;
     };
+    const fetchTier = (t) => fetch(`/lan/manifest/${manifestKey(map, t)}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null);
     const young = [];
     for (const t of tiers.length ? tiers : [tier]) {
       const key = manifestKey(map, t);
-      const files = await fetch(`/lan/manifest/${key}`, { cache: "no-store" })
-        .then((response) => (response.ok ? response.json() : null))
-        .catch(() => null);
+      const files = await fetchTier(t);
       if (!files) continue;
       if (!covers(files)) { young.push(files); continue; }
       if (t !== tier) console.log(`manifest: ${map} tier ${tier} not mature; using tier ${t}`);
@@ -1592,6 +1596,13 @@
           if (Array.isArray(runs)) files[path] = (files[path] || []).concat(runs);
         }
       }
+      return files;
+    }
+    for (const t of lower ? SEEDED_TIERS.filter((t) => t < tier).reverse() : []) {
+      const files = await fetchTier(t);
+      if (!files || !covers(files)) continue;
+      console.log(`manifest: ${map} has no mature tier ${tier}; using tier ${t}`);
+      lastManifestKey = manifestKey(map, t);
       return files;
     }
     if (young.length) {
@@ -1698,13 +1709,20 @@
     console.log(`cache seed: ${seed.records} entries, ${(seed.blob.size / 1048576).toFixed(1)} MB posted (${reply?.status ?? "failed"})`);
   }
 
+  // The manifest names what the first match's map read. A room that plays on
+  // loads the next map in this same tab, and those reads would land under the
+  // first map's key (Inferno's carried Afghan and Terminal, 148 MB), so the
+  // first intermission closes it.
+  let manifestClosed = false;
   function publishManifest(map) {
     if (ownFiles) return;
     const tier = tierOf();
     const urls = [`/lan/manifest/${manifestKey(map, tier)}`];
     let last = null;
     const post = async () => {
+      if (manifestClosed) return;
       const files = await hostedManifest();
+      if (manifestClosed) return;
       if (!files) return;
       last = JSON.stringify(files);
       for (const url of urls) {
@@ -1738,7 +1756,9 @@
     const mb = (bytes) => `${(bytes / 1048576).toFixed(0)} MB`;
     let got = null;
     for (const tier of TIERS.filter((tier) => tier > tierOf() && tier <= ceiling)) {
-      const files = await fetchManifest(map, tier);
+      // Only that tier's own blocks count as "ready": a smaller tier's would
+      // leave the bigger mips to stream next match.
+      const files = await fetchManifest(map, tier, { lower: false });
       if (!files) break;
       const label = tierName(tier);
       note.hidden = false;
@@ -1816,6 +1836,7 @@
     if (!engineStarted) return;
     if (text) {
       intermission = true;
+      manifestClosed = true;
       showLoading(params.get("map") || mapSelect.value);
       loadingStage(text, null);
       loadingNote(/next match/i.test(text) ? "The next round starts on its own." : "");

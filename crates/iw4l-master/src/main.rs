@@ -215,6 +215,12 @@ impl ServiceState {
         let Some(room) = self.rooms.remove(&room_id) else {
             return Vec::new();
         };
+        let _ = writeln!(
+            std::io::stderr(),
+            "room {room_id} closed ({reason:?}) on {}: {} connected",
+            room.view.map,
+            room.member_of.len()
+        );
         self.generation = self.generation.wrapping_add(1);
         let frame = ControlFrame::Closed {
             room_id,
@@ -843,6 +849,13 @@ async fn handle_request(
     request: ControlRequest,
 ) -> HandleOutcome {
     let request_id = request.request_id;
+    // What was asked, for the refusal line below; never the password.
+    let asked = match &request.body {
+        RequestBody::CreateRoom { map, .. } => format!("create room on {map}"),
+        RequestBody::JoinRoom { room_id, .. } => format!("join room {room_id}"),
+        RequestBody::SetPassword { .. } => "set password".to_owned(),
+        other => format!("{other:?}").split([' ', '{', '(']).next().unwrap_or("request").to_owned(),
+    };
     let mut state = state.lock().await;
     let (body, publishes) = match request.body {
         RequestBody::Status => (ResponseBody::Status(StatusResponse::CURRENT), Vec::new()),
@@ -983,6 +996,9 @@ async fn handle_request(
             PeerEvent::VoteToSkip { member_id }
         }),
     };
+    if let ResponseBody::Error(error) = &body {
+        let _ = writeln!(std::io::stderr(), "connection {connection_id} {asked} refused: {error:?}");
+    }
     HandleOutcome {
         response: ControlResponse { request_id, body },
         publishes,
@@ -1047,6 +1063,13 @@ fn create_room(
     );
     state.membership.insert(connection_id, room_id);
     state.generation = state.generation.wrapping_add(1);
+    let _ = writeln!(
+        std::io::stderr(),
+        "room {room_id} created by connection {connection_id}: {} {}{}",
+        view.map,
+        view.mode,
+        if view.password_protected { ", password" } else { "" }
+    );
     (
         ResponseBody::RoomCreated {
             member_id,
@@ -1120,6 +1143,12 @@ fn join_room(
     state.membership.insert(connection_id, room_id);
     state.generation = state.generation.wrapping_add(1);
     let view = room.view.clone();
+    let _ = writeln!(
+        std::io::stderr(),
+        "connection {connection_id} joined room {room_id} on {}: {} players",
+        view.map,
+        view.members.len()
+    );
     (
         ResponseBody::RoomJoined {
             member_id,
